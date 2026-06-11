@@ -80,11 +80,11 @@ tailwind.config = {
         <button onclick="showAddDialog()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-surface2 text-white border border-border text-xs font-medium hover:bg-border transition-all active:scale-95 cursor-pointer">+ 添加</button>
         <button id="batchTestBtn" onclick="batchTestAll()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-[#6c8cff] text-white text-xs font-medium hover:bg-[#4a6adf] transition-all active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">⚡ 测速</button>
         <div class="relative" id="import-pool-menu">
-          <button onclick="togglePoolImportMenu()" class="px-2.5 py-1.5 rounded-md text-xs text-white bg-[#2a2d3e] hover:bg-[#3a3d4e] transition-all cursor-pointer">导入号池</button>
+          <button onclick="togPImp()" class="px-2.5 py-1.5 rounded-md text-xs text-white bg-[#2a2d3e] hover:bg-[#3a3d4e] transition-all cursor-pointer">导入号池</button>
           <div id="import-pool-dropdown" class="hidden absolute right-0 top-full mt-1 z-10 bg-surface2 border border-border rounded-lg shadow-xl py-1 min-w-[120px]">
-            <button onclick="importPoolTo('claude')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 cursor-pointer">🤖 Claude Code</button>
-            <button onclick="importPoolTo('codex')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 cursor-pointer">△ Codex</button>
-            <button onclick="importPoolTo('ccswitch')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 cursor-pointer">🔄 CCSwitch</button>
+            <button onclick="impPool('claude')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 cursor-pointer">🤖 Claude Code</button>
+            <button onclick="impPool('codex')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 cursor-pointer">△ Codex</button>
+            <button onclick="impPool('ccswitch')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 cursor-pointer">🔄 CCSwitch</button>
           </div>
         </div>
         <span class="text-[11px] px-2 py-0.5 rounded-full bg-surface2 text-muted" id="modelCount">0</span>
