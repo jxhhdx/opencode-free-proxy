@@ -2,51 +2,26 @@ import type { ApiKeyEntry } from "../types";
 
 export default function ApiKeys({ keys }: { keys: ApiKeyEntry[] }) {
   return (
-    <section className="bg-[#181a22] border border-[#2a2d3e] rounded-xl p-4 mb-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-            <rect x="3" y="7" width="12" height="4" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-            <circle cx="9" cy="9" r="1.5" fill="currentColor" />
-          </svg>
-          API Keys
-        </h2>
-        <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#1e2030] text-muted">{keys.length}</span>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>API Keys</h2>
+        <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "var(--surface2)", color: "var(--muted)" }}>{keys.length}</span>
       </div>
-      <div className="flex flex-col gap-2">
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {keys.map((k) => (
-          <div
-            key={k.name}
-            className="flex items-center justify-between px-3 py-2.5 rounded-md bg-[#1e2030] border border-[#2a2d3e]"
-          >
-            <div className="flex flex-col gap-0.5 min-w-0">
-              <span className="text-[11px] font-semibold text-muted uppercase tracking-wide">
-                {k.name}
-              </span>
-              <span className="text-sm text-white font-mono break-all">{k.key}</span>
+          <div key={k.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 6, background: "var(--surface2)", border: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>{k.name}</span>
+              <span style={{ fontSize: 13, color: "var(--text)", fontFamily: '"SF Mono","Cascadia Code",monospace', wordBreak: "break-all" }}>{k.key}</span>
             </div>
-            <button
-              onClick={() => copyText(k.key)}
-              className="text-base p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
-            >
-              Copy
-            </button>
+            <button onClick={() => copy(k.key)} style={{ fontSize: 13, padding: 4, borderRadius: 4, cursor: "pointer", background: "none", border: "none", color: "var(--muted)" }}>Copy</button>
           </div>
         ))}
       </div>
-    </section>
+    </div>
   );
 }
 
-async function copyText(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand("copy");
-    ta.remove();
-  }
+async function copy(t: string) {
+  try { await navigator.clipboard.writeText(t); } catch { const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
 }
