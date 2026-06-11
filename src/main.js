@@ -321,64 +321,6 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// ── Drag & Drop Reorder ──────────────────────
-let dragSrcId = null;
-
-function onDragStart(e) {
-  dragSrcId = e.currentTarget.dataset.id;
-  e.currentTarget.classList.add('opacity-30', 'border-[#6c8cff]');
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', dragSrcId);
-}
-
-function onDragOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  const el = e.currentTarget;
-  if (el.dataset.id !== dragSrcId) {
-    el.classList.add('border-[#6c8cff]', 'bg-[#6c8cff]/10');
-  }
-}
-
-function onDrop(e) {
-  e.preventDefault();
-  const el = e.currentTarget;
-  const targetId = el.dataset.id;
-  if (!dragSrcId || dragSrcId === targetId) return;
-
-  const container = document.getElementById('modelList');
-  const items = [...container.querySelectorAll('[draggable="true"]')];
-  const srcIdx = items.findIndex(i => i.dataset.id === dragSrcId);
-  const tgtIdx = items.findIndex(i => i.dataset.id === targetId);
-  if (srcIdx < 0 || tgtIdx < 0) return;
-
-  // Get ordered IDs
-  const ids = items.map(i => i.dataset.id);
-  ids.splice(tgtIdx, 0, ids.splice(srcIdx, 1)[0]);
-
-  // Save new order
-  saveReorder(ids);
-}
-
-function onDragEnd(e) {
-  e.currentTarget.classList.remove('opacity-30', 'border-[#6c8cff]');
-  document.querySelectorAll('#modelList [draggable="true"]').forEach(el => {
-    el.classList.remove('border-[#6c8cff]', 'bg-[#6c8cff]/10');
-  });
-  dragSrcId = null;
-}
-
-async function saveReorder(ids) {
-  try {
-    await invoke('reorder_pool', { ids });
-    const entries = await loadPool();
-    // Re-sort results cache visually
-    showToast('↕️ 排序已保存');
-  } catch (e) {
-    showToast('❌ ' + e);
-  }
-}
-
 // ── Import Pool (as one provider) ────────────
 function togglePoolImportMenu() {
   document.querySelectorAll('[id^="import-dropdown-"]').forEach(el => el.classList.add('hidden'));
@@ -397,4 +339,24 @@ async function importPoolTo(tool) {
     });
     showToast(r);
   } catch (e) { showToast('❌ ' + e); }
+}
+
+// ── Priority Reorder (▲▼ buttons) ────────────
+async function movePriority(id, direction) {
+  try {
+    const pool = await invoke('get_model_pool');
+    const sorted = [...pool.entries].sort((a, b) => a.priority - b.priority);
+    const idx = sorted.findIndex(e => e.id === id);
+    if (idx < 0) return;
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= sorted.length) return;
+
+    // Swap priorities
+    [sorted[idx], sorted[newIdx]] = [sorted[newIdx], sorted[idx]];
+    const ids = sorted.map(e => e.id);
+    await invoke('reorder_pool', { ids });
+    await loadPool();
+  } catch (e) {
+    showToast('❌ ' + e);
+  }
 }
