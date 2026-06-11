@@ -83,7 +83,8 @@ tailwind.config = {
         模型号池
       </h2>
       <div class="flex items-center gap-2">
-        <button id="batchTestBtn" onclick="batchTestAll()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-[#6c8cff] text-white text-xs font-medium hover:bg-[#4a6adf] transition-all active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">⚡ 一键测速</button>
+        <button onclick="showAddDialog()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-surface2 text-white border border-border text-xs font-medium hover:bg-border transition-all active:scale-95 cursor-pointer">+ 添加</button>
+        <button id="batchTestBtn" onclick="batchTestAll()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-[#6c8cff] text-white text-xs font-medium hover:bg-[#4a6adf] transition-all active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">⚡ 测速</button>
         <span class="text-[11px] px-2 py-0.5 rounded-full bg-surface2 text-muted" id="modelCount">0</span>
       </div>
     </div>
