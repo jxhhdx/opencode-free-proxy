@@ -1,4 +1,16 @@
+# ── Rust / Cargo ───────────────────────────────────
+src-tauri/target/
+src-tauri/gen/
+
+# ── Node.js ────────────────────────────────────────
 node_modules/
+package-lock.json
+
+# ── Config ─────────────────────────────────────────
 api-keys.json
-*.log
 .env
+*.log
+
+# ── OS ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
