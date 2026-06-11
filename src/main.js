@@ -7,7 +7,7 @@ const { invoke, listen } = window.__TAURI__.core;
 // ── State ──────────────────────────────────────
 let testingModels = new Set();
 let isRefreshing = false;
-let resultsCache = {};  // modelId -> result object, persists across refreshes
+let resultsCache = {};
 
 // ── Init ───────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -58,7 +58,7 @@ async function refreshStatus() {
   try {
     const status = await invoke('get_status');
     updateStatusUI(status);
-    await loadModels();
+    await loadPool();
   } catch (e) {
     statusDot.className = 'status-dot offline';
     statusText.textContent = '连接失败: ' + e;
@@ -94,13 +94,48 @@ function updateStatusUI(status) {
   `).join('');
 }
 
-// ── Models ─────────────────────────────────────
-async function loadModels() {
+// ── Pool Mode Toggle ──────────────────────────
+async function togglePoolMode() {
+  const input = document.getElementById('poolModeInput');
+  const newMode = input.checked;
   try {
-    const models = await invoke('get_models');
-    document.getElementById('modelCount').textContent = models.length;
-    renderModels(models);
-    return models;
+    await invoke('set_pool_mode', { req: { pool_mode: newMode } });
+    updatePoolToggleUI(newMode);
+    showToast(newMode ? '🔀 号池模式已开启' : '🔀 号池模式已关闭');
+  } catch (e) {
+    input.checked = !newMode;
+    showToast('❌ ' + e);
+  }
+}
+
+function updatePoolToggleUI(enabled) {
+  const toggle = document.getElementById('poolToggle');
+  const dot = document.getElementById('poolToggleDot');
+  const label = document.getElementById('poolModeLabel');
+  if (enabled) {
+    toggle.classList.remove('bg-[#2a2d3e]');
+    toggle.classList.add('bg-[#6c8cff]');
+    dot.classList.remove('bg-muted', 'left-0.5');
+    dot.classList.add('bg-white', 'left-[18px]');
+    label.textContent = '号池开';
+  } else {
+    toggle.classList.add('bg-[#2a2d3e]');
+    toggle.classList.remove('bg-[#6c8cff]');
+    dot.classList.add('bg-muted', 'left-0.5');
+    dot.classList.remove('bg-white', 'left-[18px]');
+    label.textContent = '号池关';
+  }
+}
+
+// ── Model Pool ─────────────────────────────────
+async function loadPool() {
+  try {
+    const pool = await invoke('get_model_pool');
+    document.getElementById('modelCount').textContent = pool.entries.length;
+    document.getElementById('poolModeInput').checked = pool.pool_mode;
+    updatePoolToggleUI(pool.pool_mode);
+    renderPool(pool.entries);
+    return pool.entries;
   } catch (e) {
     document.getElementById('modelList').innerHTML =
       `<div class="text-center py-5 text-muted text-sm">加载失败: ${e}</div>`;
@@ -108,75 +143,107 @@ async function loadModels() {
   }
 }
 
-function renderModels(models) {
+function renderPool(entries) {
   const container = document.getElementById('modelList');
-  if (!models.length) {
-    container.innerHTML = `<div class="text-center py-5 text-muted text-sm">暂无模型</div>`;
+  if (!entries || !entries.length) {
+    container.innerHTML = `<div class="text-center py-5 text-muted text-sm">暂无模型，点击上方按钮添加</div>`;
     return;
   }
 
-  container.innerHTML = models.map(m => `
-    <div class="flex items-center justify-between px-3 py-2.5 rounded-md bg-surface2 border border-border">
-      <div class="flex flex-col gap-0.5 min-w-0">
-        <div class="flex items-center gap-1.5">
-          <span class="text-sm font-medium text-white">${escapeHtml(m.id)}</span>
-          ${m.builtin
-            ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#6c8cff] text-white font-semibold leading-none">内置</span>`
-            : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#fb923c] text-white font-semibold leading-none">自定义</span>`}
-        </div>
-        <div class="model-results flex items-center gap-3 text-xs text-muted" id="results-${escapeHtml(m.id)}">
-          <span>等待测速</span>
-        </div>
-      </div>
-      <div class="flex items-center gap-1">
-        <div class="relative" id="import-menu-${escapeHtml(m.id)}">
-          <button onclick="toggleImportMenu('${escapeHtml(m.id)}')" class="px-2 py-1 rounded text-xs text-white bg-[#2a2d3e] hover:bg-[#3a3d4e] transition-all cursor-pointer whitespace-nowrap">导入</button>
-          <div id="import-dropdown-${escapeHtml(m.id)}" class="hidden absolute right-0 top-full mt-1 z-10 bg-surface2 border border-border rounded-lg shadow-xl py-1 min-w-[140px]">
-            <button onclick="importModel('${escapeHtml(m.id)}', 'claude')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 transition-colors cursor-pointer">🤖 Claude Code</button>
-            <button onclick="importModel('${escapeHtml(m.id)}', 'codex')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 transition-colors cursor-pointer">△ Codex</button>
-            <button onclick="importModel('${escapeHtml(m.id)}', 'ccswitch')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 transition-colors cursor-pointer">🔄 CCSwitch</button>
+  // Sort by priority
+  const sorted = [...entries].sort((a, b) => a.priority - b.priority);
+
+  container.innerHTML = sorted.map(e => {
+    const isOpenCode = e.provider_type === 'opencode';
+    return `
+    <div class="flex items-center justify-between px-3 py-2.5 rounded-md bg-surface2 border border-border ${!e.enabled ? 'opacity-50' : ''}">
+      <div class="flex items-center gap-2 min-w-0">
+        <!-- Toggle -->
+        <button onclick="toggleEntry('${escapeHtml(e.id)}')" class="flex-shrink-0 w-7 h-4 rounded-full transition-colors ${e.enabled ? 'bg-[#6c8cff]' : 'bg-[#2a2d3e]'} relative cursor-pointer">
+          <div class="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${e.enabled ? 'left-[14px]' : 'left-0.5'}"></div>
+        </button>
+        <div class="flex flex-col gap-0.5 min-w-0">
+          <div class="flex items-center gap-1.5">
+            <span class="text-sm font-medium text-white">${escapeHtml(e.name)}</span>
+            ${isOpenCode
+              ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#6c8cff] text-white font-semibold leading-none">免费</span>`
+              : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#fb923c] text-white font-semibold leading-none">自定义</span>`}
+            <span class="text-[10px] text-muted">#${e.priority}</span>
+          </div>
+          <div class="model-results flex items-center gap-3 text-xs text-muted" id="results-${escapeHtml(e.name)}">
+            ${resultsCache[e.name] ? '' : '<span>等待测速</span>'}
           </div>
         </div>
-        ${!m.builtin
-          ? `<button onclick="removeCustomModel('${escapeHtml(m.id)}')" class="flex-shrink-0 px-2 py-1 rounded text-xs text-red-400 bg-red-400/10 hover:bg-red-400/20 transition-all cursor-pointer">✕</button>`
+      </div>
+      <div class="flex items-center gap-1 flex-shrink-0">
+        <div class="relative" id="import-menu-${escapeHtml(e.name)}">
+          <button onclick="toggleImportMenu('${escapeHtml(e.name)}')" class="px-2 py-1 rounded text-xs text-white bg-[#2a2d3e] hover:bg-[#3a3d4e] transition-all cursor-pointer whitespace-nowrap">导入</button>
+          <div id="import-dropdown-${escapeHtml(e.name)}" class="hidden absolute right-0 top-full mt-1 z-10 bg-surface2 border border-border rounded-lg shadow-xl py-1 min-w-[140px]">
+            <button onclick="importModel('${escapeHtml(e.name)}', 'claude')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 transition-colors cursor-pointer">🤖 Claude Code</button>
+            <button onclick="importModel('${escapeHtml(e.name)}', 'codex')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 transition-colors cursor-pointer">△ Codex</button>
+            <button onclick="importModel('${escapeHtml(e.name)}', 'ccswitch')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 transition-colors cursor-pointer">🔄 CCSwitch</button>
+          </div>
+        </div>
+        ${!isOpenCode
+          ? `<button onclick="removeProvider('${escapeHtml(e.id)}')" class="flex-shrink-0 px-2 py-1 rounded text-xs text-red-400 bg-red-400/10 hover:bg-red-400/20 transition-all cursor-pointer">✕</button>`
           : ''}
       </div>
     </div>
-  `).join('');
+  `}).join('');
 
-  // Re-apply cached results after re-render
-  for (const [modelId, result] of Object.entries(resultsCache)) {
-    displayTestResult(modelId, result);
+  // Re-apply cached results
+  for (const [name, result] of Object.entries(resultsCache)) {
+    displayTestResult(name, result);
   }
 }
 
-// ── Import to Tool ──────────────────────────
-function toggleImportMenu(modelId) {
-  const dropdown = document.getElementById('import-dropdown-' + modelId);
-  if (!dropdown) return;
-  const isHidden = dropdown.classList.contains('hidden');
-  document.querySelectorAll('[id^="import-dropdown-"]').forEach(el => el.classList.add('hidden'));
-  if (isHidden) dropdown.classList.remove('hidden');
-}
-
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('[id^="import-menu-"]')) {
-    document.querySelectorAll('[id^="import-dropdown-"]').forEach(el => el.classList.add('hidden'));
-  }
-});
-
-async function importModel(modelId, tool) {
-  const dropdown = document.getElementById('import-dropdown-' + modelId);
-  if (dropdown) dropdown.classList.add('hidden');
+// ── Pool Management ───────────────────────────
+async function toggleEntry(id) {
   try {
-    const status = await invoke('get_status');
-    const apiKey = status.keys.length > 0 ? status.keys[0].key : '';
-    if (!apiKey) { showToast('❌ 没有可用的 API Key'); return; }
-    const result = await invoke('import_to_tool', {
-      req: { model: modelId, api_key: apiKey, tool }
-    });
-    showToast(result);
-  } catch (e) { showToast('❌ ' + e); }
+    await invoke('toggle_pool_entry', { id });
+    await loadPool();
+  } catch (e) {
+    showToast('❌ ' + e);
+  }
+}
+
+async function removeProvider(id) {
+  try {
+    await invoke('remove_pool_entry', { id });
+    showToast('已移除');
+    await loadPool();
+  } catch (e) {
+    showToast('❌ ' + e);
+  }
+}
+
+async function addCustomProvider() {
+  const name = document.getElementById('customModelInput').value.trim();
+  const base_url = document.getElementById('customUrlInput').value.trim();
+  const api_key = document.getElementById('customKeyInput').value.trim();
+  if (!name) { showToast('请输入模型名称'); return; }
+
+  try {
+    const req = {
+      id: null,
+      name: name,
+      base_url: base_url,
+      api_key: api_key,
+      model_name: name,
+      priority: 999,
+      enabled: true,
+      builtin: false,
+      provider_type: base_url ? 'custom' : 'opencode',
+    };
+    await invoke('upsert_pool_entry', { req });
+    document.getElementById('customModelInput').value = '';
+    document.getElementById('customUrlInput').value = '';
+    document.getElementById('customKeyInput').value = '';
+    showToast('✓ 已添加: ' + name);
+    await loadPool();
+  } catch (e) {
+    showToast('❌ ' + e);
+  }
 }
 
 // ── Batch Speed Test ──────────────────────────
@@ -188,13 +255,12 @@ async function batchTestAll() {
   if (btn) btn.disabled = true;
 
   try {
-    // Clear cached results before new batch test
     resultsCache = {};
-    const models = await loadModels();
-    if (models && models.length > 0) {
-      showToast(`⏳ 一键测速 ${models.length} 个模型...`);
-      for (const m of models) {
-        await testModel(m.id);
+    const entries = await loadPool();
+    if (entries && entries.length > 0) {
+      showToast(`⏳ 一键测速 ${entries.length} 个模型...`);
+      for (const e of entries) {
+        await testModel(e.name);
       }
       showToast('✅ 测速完成');
     } else {
@@ -208,31 +274,27 @@ async function batchTestAll() {
   }
 }
 
-async function testModel(modelId) {
-  if (testingModels.has(modelId)) return;
+async function testModel(modelName) {
+  if (testingModels.has(modelName)) return;
+  testingModels.add(modelName);
 
-  testingModels.add(modelId);
-  const results = document.getElementById('results-' + modelId);
+  const results = document.getElementById('results-' + modelName);
   if (results) results.innerHTML = `<span class="text-xs text-muted">⏳ 测试中...</span>`;
 
   try {
-    const result = await invoke('run_speed_test_cmd', { req: { model: modelId } });
-    displayTestResult(modelId, result);
+    const result = await invoke('run_speed_test_cmd', { req: { model: modelName } });
+    displayTestResult(modelName, result);
   } catch (e) {
-    const results = document.getElementById('results-' + modelId);
-    if (results) {
-      results.innerHTML = `<span class="text-xs text-red-400">❌ ${escapeHtml(String(e))}</span>`;
-    }
+    const results = document.getElementById('results-' + modelName);
+    if (results) results.innerHTML = `<span class="text-xs text-red-400">❌ ${escapeHtml(String(e))}</span>`;
   } finally {
-    testingModels.delete(modelId);
+    testingModels.delete(modelName);
   }
 }
 
-function displayTestResult(modelId, result) {
-  // Save to cache so results survive refresh/re-render
-  resultsCache[modelId] = result;
-
-  const results = document.getElementById('results-' + modelId);
+function displayTestResult(modelName, result) {
+  resultsCache[modelName] = result;
+  const results = document.getElementById('results-' + modelName);
   if (!results) return;
 
   if (result.success) {
@@ -243,46 +305,58 @@ function displayTestResult(modelId, result) {
       <span>⏱ <strong class="text-white">${latency}ms</strong></span>
       <span>⚡ <strong class="text-white">${tokensPerSec}</strong> tok/s</span>
       <span class="hidden sm:inline">📝 <strong class="text-white">${result.total_tokens}</strong> tokens</span>
-      <span class="hidden sm:inline" title="${preview}">"${preview}..."</span>
     `;
   } else {
     results.innerHTML = `<span class="text-red-400">❌ ${escapeHtml(result.error || '测试失败')}</span>`;
   }
 }
 
-// Listen for speed test completion (from Rust streaming)
+// Listen for speed test completion
 try {
   listen('speed-test-complete', (event) => {
     const r = event.payload;
     displayTestResult(r.model, r);
   });
-} catch(e) { /* Tauri API not available in browser */ }
+} catch(e) {}
 
-// ── Custom Models ──────────────────────────────
-async function addCustomModel() {
-  const input = document.getElementById('customModelInput');
-  const name = input.value.trim();
-  if (!name) { showToast('请输入模型名称'); return; }
-
-  try {
-    const updated = await invoke('add_custom_model', { req: { name } });
-    input.value = '';
-    showToast('✓ 已添加模型: ' + name);
-    await loadModels();
-  } catch (e) {
-    showToast('❌ ' + e);
-  }
+// ── Import to Tool ──────────────────────────
+function toggleImportMenu(modelName) {
+  const dropdown = document.getElementById('import-dropdown-' + modelName);
+  if (!dropdown) return;
+  const isHidden = dropdown.classList.contains('hidden');
+  document.querySelectorAll('[id^="import-dropdown-"]').forEach(el => el.classList.add('hidden'));
+  if (isHidden) dropdown.classList.remove('hidden');
 }
 
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[id^="import-menu-"]')) {
+    document.querySelectorAll('[id^="import-dropdown-"]').forEach(el => el.classList.add('hidden'));
+  }
+});
+
+async function importModel(modelName, tool) {
+  const dropdown = document.getElementById('import-dropdown-' + modelName);
+  if (dropdown) dropdown.classList.add('hidden');
+  try {
+    const status = await invoke('get_status');
+    const apiKey = status.keys.length > 0 ? status.keys[0].key : '';
+    if (!apiKey) { showToast('❌ 没有可用的 API Key'); return; }
+    const result = await invoke('import_to_tool', { req: { model: modelName, api_key: apiKey, tool } });
+    showToast(result);
+  } catch (e) { showToast('❌ ' + e); }
+}
+
+// ── Legacy: still exported for backward compat ──
+async function addCustomModel() { addCustomProvider(); }
 async function removeCustomModel(name) {
+  // Find entry by name and remove it
   try {
-    await invoke('remove_custom_model', { req: { name } });
-    showToast('已移除: ' + name);
-    await loadModels();
-  } catch (e) {
-    showToast('❌ ' + e);
-  }
+    const pool = await invoke('get_model_pool');
+    const entry = pool.entries.find(e => e.name === name);
+    if (entry) await removeProvider(entry.id);
+  } catch(e) { showToast('❌ ' + e); }
 }
+async function loadModels() { return loadPool(); }
 
 // ── Utilities ──────────────────────────────────
 function escapeHtml(str) {

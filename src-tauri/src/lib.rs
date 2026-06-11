@@ -12,6 +12,7 @@ use tracing::info;
 mod proxy;
 
 use proxy::auth::AuthManager;
+use proxy::model_pool::{ModelPool, ModelPoolEntry};
 use proxy::server::{run_speed_test, ProxyState, SpeedTestResult};
 use proxy::zen::{SessionManager, ZenClient};
 
@@ -45,6 +46,132 @@ pub struct ImportRequest {
     pub model: String,
     pub api_key: String,
     pub tool: String, // "claude" | "codex" | "ccswitch"
+}
+
+// ── Model Pool ────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct PoolEntryRequest {
+    pub id: Option<String>,
+    pub name: String,
+    pub base_url: String,
+    pub api_key: String,
+    pub model_name: String,
+    pub priority: u32,
+    pub enabled: bool,
+    pub builtin: bool,
+    pub provider_type: String,
+}
+
+#[derive(Deserialize)]
+pub struct TogglePoolRequest {
+    pub pool_mode: bool,
+}
+
+#[derive(Serialize)]
+pub struct PoolStatus {
+    pub pool_mode: bool,
+    pub entries: Vec<ModelPoolEntry>,
+}
+
+#[tauri::command]
+async fn get_model_pool(
+    state: tauri::State<'_, AppState>,
+) -> Result<PoolStatus, String> {
+    let pool = state.proxy.model_pool.read().await;
+    Ok(PoolStatus {
+        pool_mode: pool.pool_mode,
+        entries: pool.entries.clone(),
+    })
+}
+
+#[tauri::command]
+async fn set_pool_mode(
+    state: tauri::State<'_, AppState>,
+    req: TogglePoolRequest,
+) -> Result<bool, String> {
+    let mut pool = state.proxy.model_pool.write().await;
+    pool.pool_mode = req.pool_mode;
+    if let Some(ref config_dir) = state.config_dir {
+        pool.save(&config_dir.join("model_pool.json"));
+    }
+    Ok(pool.pool_mode)
+}
+
+#[tauri::command]
+async fn upsert_pool_entry(
+    state: tauri::State<'_, AppState>,
+    req: PoolEntryRequest,
+) -> Result<PoolStatus, String> {
+    let mut pool = state.proxy.model_pool.write().await;
+    let id = req.id.unwrap_or_else(|| format!("provider-{}", uuid::Uuid::new_v4()));
+    let entry = ModelPoolEntry {
+        id,
+        name: req.name,
+        base_url: req.base_url,
+        api_key: req.api_key,
+        model_name: req.model_name,
+        priority: req.priority,
+        enabled: req.enabled,
+        builtin: req.builtin,
+        provider_type: req.provider_type,
+    };
+    pool.upsert(entry);
+    if let Some(ref config_dir) = state.config_dir {
+        pool.save(&config_dir.join("model_pool.json"));
+    }
+    Ok(PoolStatus {
+        pool_mode: pool.pool_mode,
+        entries: pool.entries.clone(),
+    })
+}
+
+#[tauri::command]
+async fn remove_pool_entry(
+    state: tauri::State<'_, AppState>,
+    id: String,
+) -> Result<PoolStatus, String> {
+    let mut pool = state.proxy.model_pool.write().await;
+    pool.remove(&id);
+    if let Some(ref config_dir) = state.config_dir {
+        pool.save(&config_dir.join("model_pool.json"));
+    }
+    Ok(PoolStatus {
+        pool_mode: pool.pool_mode,
+        entries: pool.entries.clone(),
+    })
+}
+
+#[tauri::command]
+async fn toggle_pool_entry(
+    state: tauri::State<'_, AppState>,
+    id: String,
+) -> Result<PoolStatus, String> {
+    let mut pool = state.proxy.model_pool.write().await;
+    pool.toggle_enabled(&id);
+    if let Some(ref config_dir) = state.config_dir {
+        pool.save(&config_dir.join("model_pool.json"));
+    }
+    Ok(PoolStatus {
+        pool_mode: pool.pool_mode,
+        entries: pool.entries.clone(),
+    })
+}
+
+#[tauri::command]
+async fn init_pool_builtins(
+    state: tauri::State<'_, AppState>,
+) -> Result<PoolStatus, String> {
+    let mut pool = state.proxy.model_pool.write().await;
+    let models: Vec<&str> = proxy::server::MODELS.to_vec();
+    pool.init_builtins(&models);
+    if let Some(ref config_dir) = state.config_dir {
+        pool.save(&config_dir.join("model_pool.json"));
+    }
+    Ok(PoolStatus {
+        pool_mode: pool.pool_mode,
+        entries: pool.entries.clone(),
+    })
 }
 
 #[tauri::command]
@@ -313,11 +440,20 @@ pub fn run() {
             let zen = ZenClient::new().expect("Failed to create HTTP client");
             let sessions = SessionManager::new();
 
+            // Load model pool
+            let pool_path = config_dir.join("model_pool.json");
+            let mut model_pool = ModelPool::load(&pool_path);
+            if model_pool.entries.is_empty() {
+                model_pool.init_builtins(&proxy::server::MODELS);
+                model_pool.save(&pool_path);
+            }
+
             let proxy_state = ProxyState {
                 auth: Arc::new(RwLock::new(auth)),
                 zen: Arc::new(zen),
                 sessions: Arc::new(sessions),
                 custom_models: Arc::new(RwLock::new(custom_models)),
+                model_pool: Arc::new(RwLock::new(model_pool)),
             };
 
             let server_running =
@@ -364,6 +500,12 @@ pub fn run() {
             remove_custom_model,
             run_speed_test_cmd,
             import_to_tool,
+            get_model_pool,
+            set_pool_mode,
+            upsert_pool_entry,
+            remove_pool_entry,
+            toggle_pool_entry,
+            init_pool_builtins,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

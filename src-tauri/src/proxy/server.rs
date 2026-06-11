@@ -17,6 +17,7 @@ use tracing::info;
 
 use super::anthropic::{anthropic_to_openai, openai_to_anthropic, AnthropicStreamConverter};
 use super::auth::AuthManager;
+use super::model_pool::ModelPool;
 use super::zen::{SessionManager, ZenClient};
 
 pub const MODELS: &[&str] = &[
@@ -33,6 +34,7 @@ pub struct ProxyState {
     pub zen: Arc<ZenClient>,
     pub sessions: Arc<SessionManager>,
     pub custom_models: Arc<RwLock<Vec<String>>>,
+    pub model_pool: Arc<RwLock<ModelPool>>,
 }
 
 pub fn create_router(state: Arc<ProxyState>) -> Router {
