@@ -48,10 +48,14 @@ pub struct ImportRequest {
 }
 
 #[tauri::command]
-async fn import_to_tool(req: ImportRequest) -> Result<String, String> {
+async fn import_to_tool(
+    _app_handle: tauri::AppHandle,
+    req: ImportRequest,
+) -> Result<String, String> {
     let home = dirs::home_dir().ok_or("Cannot find home directory")?;
     let base_url = "http://localhost:6446";
     let base_url_v1 = "http://localhost:6446/v1";
+    let display_name = format!("OpenCode Free ({})", req.model);
 
     match req.tool.as_str() {
         "claude" => {
@@ -87,12 +91,44 @@ async fn import_to_tool(req: ImportRequest) -> Result<String, String> {
             Ok(format!("✅ 已导入到 Codex ({})", path.display()))
         }
         "ccswitch" => {
-            // ~/.cc-cast/config.json
-            let path = home.join(".cc-cast/config.json");
-            let _ = std::fs::create_dir_all(path.parent().unwrap());
-            let config = serde_json::json!({
+            // Use ccswitch:// deep link protocol (official way)
+            let encoded_name = urlencoding(&display_name);
+            let encoded_endpoint = urlencoding(base_url);
+            let encoded_key = urlencoding(&req.api_key);
+            let encoded_model = urlencoding(&req.model);
+            let encoded_homepage = urlencoding("https://github.com/jxhhdx/opencode-free-proxy");
+
+            let deep_link = format!(
+                "ccswitch://v1/import?resource=provider&app=claude&name={}&endpoint={}&apiKey={}&model={}&homepage={}",
+                encoded_name, encoded_endpoint, encoded_key, encoded_model, encoded_homepage
+            );
+
+            // Open deep link (macOS)
+            #[cfg(target_os = "macos")]
+            {
+                let _ = std::process::Command::new("open")
+                    .arg(&deep_link)
+                    .spawn();
+            }
+            #[cfg(target_os = "linux")]
+            {
+                let _ = std::process::Command::new("xdg-open")
+                    .arg(&deep_link)
+                    .spawn();
+            }
+            #[cfg(target_os = "windows")]
+            {
+                let _ = std::process::Command::new("cmd")
+                    .args(&["/c", "start", "", &deep_link])
+                    .spawn();
+            }
+
+            // Also write cc-cast config as fallback
+            let cast_path = home.join(".cc-cast/config.json");
+            let _ = std::fs::create_dir_all(cast_path.parent().unwrap());
+            let cast_config = serde_json::json!({
                 "profiles": {
-                    "OpenCode Free": {
+                    &display_name: {
                         "env": {
                             "ANTHROPIC_BASE_URL": base_url,
                             "ANTHROPIC_AUTH_TOKEN": req.api_key,
@@ -101,14 +137,25 @@ async fn import_to_tool(req: ImportRequest) -> Result<String, String> {
                     }
                 }
             });
-            let content = serde_json::to_string_pretty(&config)
-                .map_err(|e| format!("Serialize error: {}", e))?;
-            std::fs::write(&path, content)
-                .map_err(|e| format!("Write error: {}", e))?;
-            Ok(format!("✅ 已导入到 CCSwitch ({})", path.display()))
+            if let Ok(content) = serde_json::to_string_pretty(&cast_config) {
+                let _ = std::fs::write(&cast_path, content);
+            }
+            Ok("✅ 已唤起 CCSwitch 导入窗口，请在弹窗中确认".into())
         }
         other => Err(format!("Unknown tool: {}. Supported: claude, codex, ccswitch", other)),
     }
+}
+
+fn urlencoding(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for &b in s.as_bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => out.push(b as char),
+            b' ' => out.push_str("%20"),
+            _ => out.push_str(&format!("%{:02X}", b)),
+        }
+    }
+    out
 }
 
 // ── Tauri Commands ────────────────────────────────────────────────────
