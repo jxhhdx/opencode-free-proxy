@@ -393,7 +393,7 @@ async function importPoolTo(tool) {
     const key = status.keys[0]?.key;
     if (!key) { showToast('❌ 无可用 Key'); return; }
     const r = await invoke('import_to_tool', {
-      req: { model: '号池', model_name: '', api_key: key, tool }
+      req: { model: 'ModelPool', model_name: '', api_key: key, tool }
     });
     showToast(r);
   } catch (e) { showToast('❌ ' + e); }
