@@ -162,13 +162,10 @@ function renderModels(models) {
             : `<span class="tag custom">自定义</span>`}
         </div>
         <div class="model-results" id="results-${escapeHtml(m.id)}">
-          <span class="model-metric">点击右侧按钮测速</span>
+          <span class="model-metric">等待测速</span>
         </div>
       </div>
       <div style="display:flex;gap:4px;">
-        <button class="btn btn-primary" onclick="testModel('${escapeHtml(m.id)}')" id="testbtn-${escapeHtml(m.id)}">
-          ⚡ 测速
-        </button>
         ${!m.builtin ? `<button class="btn btn-danger" onclick="removeCustomModel('${escapeHtml(m.id)}')">✕</button>` : ''}
       </div>
     </div>
@@ -180,11 +177,7 @@ async function testModel(modelId) {
   if (testingModels.has(modelId)) return;
 
   testingModels.add(modelId);
-  const item = document.getElementById('model-' + modelId);
-  const btn = document.getElementById('testbtn-' + modelId);
   const results = document.getElementById('results-' + modelId);
-  if (item) item.classList.add('testing');
-  if (btn) btn.disabled = true;
   if (results) results.innerHTML = `<span class="model-metric">⏳ 测试中...</span>`;
 
   try {
@@ -197,8 +190,6 @@ async function testModel(modelId) {
     }
   } finally {
     testingModels.delete(modelId);
-    if (item) item.classList.remove('testing');
-    if (btn) { btn.disabled = false; }
   }
 }
 
