@@ -177,7 +177,29 @@ async fn init_pool_builtins(
         entries: pool.entries.clone(),
     })
 }
+    Ok(PoolStatus {
+                pool_mode: pool.pool_mode,
+                entries: pool.entries.clone(),
+            })
+        }
 
+        #[tauri::command]
+        async fn reorder_pool(
+            state: tauri::State<'_, AppState>,
+            ids: Vec<String>,
+        ) -> Result<PoolStatus, String> {
+            let mut pool = state.proxy.model_pool.write().await;
+            for (i, id) in ids.iter().enumerate() {
+                pool.set_priority(id, (i + 1) as u32);
+            }
+            if let Some(ref config_dir) = state.config_dir {
+                pool.save(&config_dir.join("model_pool.json"));
+            }
+            Ok(PoolStatus {
+                pool_mode: pool.pool_mode,
+                entries: pool.entries.clone(),
+            })
+        }
 #[tauri::command]
 async fn import_to_tool(
     _app_handle: tauri::AppHandle,
@@ -516,6 +538,7 @@ pub fn run() {
             remove_pool_entry,
             toggle_pool_entry,
             init_pool_builtins,
+            reorder_pool,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -188,7 +188,7 @@ function renderPool(entries) {
   container.innerHTML = sorted.map(e => {
     const isOpenCode = e.provider_type === 'opencode';
     return `
-    <div class="flex items-center justify-between px-3 py-2.5 rounded-md bg-surface2 border border-border ${!e.enabled ? 'opacity-50' : ''}">
+    <div draggable="true" data-id="${escapeHtml(e.id)}" ondragstart="onDragStart(event)" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragend="onDragEnd(event)" class="flex items-center justify-between px-3 py-2.5 rounded-md bg-surface2 border border-border ${!e.enabled ? 'opacity-50' : ''} cursor-grab active:cursor-grabbing">
       <div class="flex items-center gap-2 min-w-0">
         <button onclick="toggleEntry('${escapeHtml(e.id)}')" class="flex-shrink-0 w-7 h-4 rounded-full transition-colors ${e.enabled ? 'bg-[#6c8cff]' : 'bg-[#2a2d3e]'} relative cursor-pointer">
           <div class="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${e.enabled ? 'left-[14px]' : 'left-0.5'}"></div>
@@ -319,4 +319,62 @@ async function importModel(name, tool) {
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Drag & Drop Reorder ──────────────────────
+let dragSrcId = null;
+
+function onDragStart(e) {
+  dragSrcId = e.currentTarget.dataset.id;
+  e.currentTarget.classList.add('opacity-30', 'border-[#6c8cff]');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', dragSrcId);
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const el = e.currentTarget;
+  if (el.dataset.id !== dragSrcId) {
+    el.classList.add('border-[#6c8cff]', 'bg-[#6c8cff]/10');
+  }
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  const el = e.currentTarget;
+  const targetId = el.dataset.id;
+  if (!dragSrcId || dragSrcId === targetId) return;
+
+  const container = document.getElementById('modelList');
+  const items = [...container.querySelectorAll('[draggable="true"]')];
+  const srcIdx = items.findIndex(i => i.dataset.id === dragSrcId);
+  const tgtIdx = items.findIndex(i => i.dataset.id === targetId);
+  if (srcIdx < 0 || tgtIdx < 0) return;
+
+  // Get ordered IDs
+  const ids = items.map(i => i.dataset.id);
+  ids.splice(tgtIdx, 0, ids.splice(srcIdx, 1)[0]);
+
+  // Save new order
+  saveReorder(ids);
+}
+
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('opacity-30', 'border-[#6c8cff]');
+  document.querySelectorAll('#modelList [draggable="true"]').forEach(el => {
+    el.classList.remove('border-[#6c8cff]', 'bg-[#6c8cff]/10');
+  });
+  dragSrcId = null;
+}
+
+async function saveReorder(ids) {
+  try {
+    await invoke('reorder_pool', { ids });
+    const entries = await loadPool();
+    // Re-sort results cache visually
+    showToast('↕️ 排序已保存');
+  } catch (e) {
+    showToast('❌ ' + e);
+  }
 }
