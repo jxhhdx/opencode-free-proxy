@@ -142,6 +142,7 @@ async function confirmAddProvider() {
   const model_name = document.getElementById('dlgModel').value.trim() || name;
   const base_url = document.getElementById('dlgUrl').value.trim();
   const api_key = document.getElementById('dlgKey').value.trim();
+  const api_format = document.querySelector('input[name="apiFormat"]:checked')?.value || 'openai';
   if (!name) { showToast('请输入名称'); return; }
 
   try {
@@ -150,6 +151,7 @@ async function confirmAddProvider() {
         id: null, name, base_url, api_key, model_name,
         priority: 999, enabled: true, builtin: false,
         provider_type: base_url ? 'custom' : 'opencode',
+        api_format,
       }
     });
     hideAddDialog();

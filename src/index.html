@@ -97,6 +97,14 @@ tailwind.config = {
           <input id="dlgModel" placeholder="模型名 *" class="w-full px-3 py-2 rounded-md bg-surface2 border border-border text-sm text-white placeholder-muted outline-none focus:border-[#6c8cff] transition-colors" />
           <input id="dlgUrl" placeholder="API 地址（可选，为空使用 OpenCode 免费）" class="w-full px-3 py-2 rounded-md bg-surface2 border border-border text-sm text-white placeholder-muted outline-none focus:border-[#6c8cff] transition-colors" />
           <input id="dlgKey" type="password" placeholder="API Key（可选）" class="w-full px-3 py-2 rounded-md bg-surface2 border border-border text-sm text-white placeholder-muted outline-none focus:border-[#6c8cff] transition-colors" />
+          <div class="flex gap-2">
+            <label class="flex-1 flex items-center gap-2 px-3 py-2 rounded-md bg-surface2 border border-border cursor-pointer text-sm text-white has-[:checked]:border-[#6c8cff] transition-colors">
+              <input type="radio" name="apiFormat" value="openai" checked class="accent-[#6c8cff]" /> OpenAI
+            </label>
+            <label class="flex-1 flex items-center gap-2 px-3 py-2 rounded-md bg-surface2 border border-border cursor-pointer text-sm text-white has-[:checked]:border-[#6c8cff] transition-colors">
+              <input type="radio" name="apiFormat" value="anthropic" class="accent-[#6c8cff]" /> Anthropic
+            </label>
+          </div>
         </div>
         <div class="flex justify-end gap-2 mt-4">
           <button onclick="hideAddDialog()" class="px-3.5 py-2 rounded-md bg-surface2 text-muted text-xs font-medium border border-border hover:bg-border transition-all cursor-pointer">取消</button>

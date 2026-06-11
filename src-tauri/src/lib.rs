@@ -63,6 +63,7 @@ pub struct PoolEntryRequest {
     pub enabled: bool,
     pub builtin: bool,
     pub provider_type: String,
+    pub api_format: String,
 }
 
 #[derive(Deserialize)]
@@ -117,6 +118,7 @@ async fn upsert_pool_entry(
         enabled: req.enabled,
         builtin: req.builtin,
         provider_type: req.provider_type,
+        api_format: req.api_format,
     };
     pool.upsert(entry);
     if let Some(ref config_dir) = state.config_dir {

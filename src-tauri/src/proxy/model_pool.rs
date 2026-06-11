@@ -17,6 +17,12 @@ pub struct ModelPoolEntry {
     pub builtin: bool,
     #[serde(default = "default_provider_type")]
     pub provider_type: String,
+    #[serde(default = "default_api_format")]
+    pub api_format: String,
+}
+
+fn default_api_format() -> String {
+    "openai".into()
 }
 
 fn default_provider_type() -> String {
@@ -127,6 +133,7 @@ impl ModelPool {
                 enabled: true,
                 builtin: true,
                 provider_type: "opencode".into(),
+                api_format: "openai".into(),
             });
         }
     }
