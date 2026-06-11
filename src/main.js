@@ -162,39 +162,39 @@ function renderPool(entries) {
 
   container.innerHTML = sorted.map(e => {
     const isOpenCode = e.provider_type === 'opencode';
-    return \`<div data-id="\${escapeHtml(e.id)}" class="flex items-center px-3 py-2 rounded-md bg-surface2 border border-border \${!e.enabled ? 'opacity-50' : ''}">
+    return `<div data-id="${escapeHtml(e.id)}" class="flex items-center px-3 py-2 rounded-md bg-surface2 border border-border ${!e.enabled ? 'opacity-50' : ''}">
       <span class="model-drag-handle text-muted hover:text-white cursor-grab text-sm mr-2 select-none">⠿</span>
       <div class="flex items-center gap-2 flex-1 min-w-0">
-        <button onclick="toggleEntry('\${escapeHtml(e.id)}')" class="flex-shrink-0 w-7 h-4 rounded-full transition-colors \${e.enabled ? 'bg-[#6c8cff]' : 'bg-[#2a2d3e]'} relative cursor-pointer">
-          <div class="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all \${e.enabled ? 'left-[14px]' : 'left-0.5'}"></div>
+        <button onclick="toggleEntry('${escapeHtml(e.id)}')" class="flex-shrink-0 w-7 h-4 rounded-full transition-colors ${e.enabled ? 'bg-[#6c8cff]' : 'bg-[#2a2d3e]'} relative cursor-pointer">
+          <div class="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${e.enabled ? 'left-[14px]' : 'left-0.5'}"></div>
         </button>
         <div class="flex flex-col gap-0.5 min-w-0 flex-1">
           <div class="flex items-center gap-1.5">
-            <span class="text-sm font-medium text-white">\${escapeHtml(e.name)}</span>
-            \${isOpenCode
-              ? \`<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#6c8cff] text-white font-semibold">免费</span>\`
-              : \`<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#fb923c] text-white font-semibold">自定义</span>\`}
-            <span class="text-[10px] text-muted">#\${e.priority}</span>
+            <span class="text-sm font-medium text-white">${escapeHtml(e.name)}</span>
+            ${isOpenCode
+              ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#6c8cff] text-white font-semibold">免费</span>`
+              : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#fb923c] text-white font-semibold">自定义</span>`}
+            <span class="text-[10px] text-muted">#${e.priority}</span>
           </div>
-          <div class="flex items-center gap-3 text-xs text-muted" id="results-\${escapeHtml(e.name)}">
-            \${resultsCache[e.name] ? displayResultHTML(resultsCache[e.name]) : '<span>等待测速</span>'}
+          <div class="flex items-center gap-3 text-xs text-muted" id="results-${escapeHtml(e.name)}">
+            ${resultsCache[e.name] ? displayResultHTML(resultsCache[e.name]) : '<span>等待测速</span>'}
           </div>
         </div>
       </div>
       <div class="flex items-center gap-1 flex-shrink-0">
-        <div class="relative" id="import-menu-\${escapeHtml(e.name)}" data-model-name="\${escapeHtml(e.model_name || e.name)}">
-          <button onclick="toggleImportMenu('\${escapeHtml(e.name)}')" class="px-2 py-1 rounded text-xs text-white bg-[#2a2d3e] hover:bg-[#3a3d4e] transition-all cursor-pointer whitespace-nowrap">导入</button>
-          <div id="import-dropdown-\${escapeHtml(e.name)}" class="hidden absolute right-0 top-full mt-1 z-10 bg-surface2 border border-border rounded-lg shadow-xl py-1 min-w-[120px]">
-            <button onclick="importModel('\${escapeHtml(e.name)}', 'claude')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 cursor-pointer">🤖 Claude</button>
-            <button onclick="importModel('\${escapeHtml(e.name)}', 'codex')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 cursor-pointer">△ Codex</button>
-            <button onclick="importModel('\${escapeHtml(e.name)}', 'ccswitch')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 cursor-pointer">🔄 CCSwitch</button>
+        <div class="relative" id="import-menu-${escapeHtml(e.name)}" data-model-name="${escapeHtml(e.model_name || e.name)}">
+          <button onclick="toggleImportMenu('${escapeHtml(e.name)}')" class="px-2 py-1 rounded text-xs text-white bg-[#2a2d3e] hover:bg-[#3a3d4e] transition-all cursor-pointer whitespace-nowrap">导入</button>
+          <div id="import-dropdown-${escapeHtml(e.name)}" class="hidden absolute right-0 top-full mt-1 z-10 bg-surface2 border border-border rounded-lg shadow-xl py-1 min-w-[120px]">
+            <button onclick="importModel('${escapeHtml(e.name)}', 'claude')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 cursor-pointer">🤖 Claude</button>
+            <button onclick="importModel('${escapeHtml(e.name)}', 'codex')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 cursor-pointer">△ Codex</button>
+            <button onclick="importModel('${escapeHtml(e.name)}', 'ccswitch')" class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 cursor-pointer">🔄 CCSwitch</button>
           </div>
         </div>
-        \${!isOpenCode
-          ? \`<button onclick="removeProvider('\${escapeHtml(e.id)}')" class="flex-shrink-0 px-2 py-1 rounded text-xs text-red-400 bg-red-400/10 hover:bg-red-400/20 cursor-pointer">✕</button>\`
+        ${!isOpenCode
+          ? `<button onclick="removeProvider('${escapeHtml(e.id)}')" class="flex-shrink-0 px-2 py-1 rounded text-xs text-red-400 bg-red-400/10 hover:bg-red-400/20 cursor-pointer">✕</button>`
           : ''}
       </div>
-    </div>\`;
+    </div>`;
   }).join('');
 
   // Init SortableJS for drag-and-drop reorder
