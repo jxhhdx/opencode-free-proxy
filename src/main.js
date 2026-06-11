@@ -189,6 +189,23 @@ function renderPool(entries) {
     </div>`;
   }).join('');
 
+  // Init SortableJS for drag-and-drop reorder
+  if (window.Sortable && !container.classList.contains('sortable-initialized')) {
+    container.classList.add('sortable-initialized');
+    new Sortable(container, {
+      animation: 150,
+      handle: '.model-drag-handle',
+      onEnd: async function(evt) {
+        const items = [...container.querySelectorAll('[data-id]')];
+        const ids = items.map(el => el.dataset.id);
+        try {
+          await invoke('reorder_pool', { ids });
+          showToast('↕️ 排序已保存');
+        } catch(e) { showToast('❌ ' + e); }
+      }
+    });
+  }
+
   for (const [name, result] of Object.entries(resultsCache)) {
     displayTestResult(name, result);
   }
@@ -308,22 +325,3 @@ async function importPoolTo(tool) {
   } catch (e) { showToast('❌ ' + e); }
 }
 
-// ── Priority Reorder (▲▼ buttons) ────────────
-async function movePriority(id, direction) {
-  try {
-    const pool = await invoke('get_model_pool');
-    const sorted = [...pool.entries].sort((a, b) => a.priority - b.priority);
-    const idx = sorted.findIndex(e => e.id === id);
-    if (idx < 0) return;
-    const newIdx = idx + direction;
-    if (newIdx < 0 || newIdx >= sorted.length) return;
-
-    // Swap priorities
-    [sorted[idx], sorted[newIdx]] = [sorted[newIdx], sorted[idx]];
-    const ids = sorted.map(e => e.id);
-    await invoke('reorder_pool', { ids });
-    await loadPool();
-  } catch (e) {
-    showToast('❌ ' + e);
-  }
-}
