@@ -298,7 +298,7 @@ function toggleImportMenu(name) {
   if (d) d.classList.toggle('hidden');
 }
 document.addEventListener('click', (e) => {
-  if (!e.target.closest('[id^="import-menu-"]'))
+  if (!e.target.closest('[id^="import-menu-"], [id^="import-pool-"]'))
     document.querySelectorAll('[id^="import-dropdown-"]').forEach(el => el.classList.add('hidden'));
 });
 async function importModel(name, tool) {
@@ -377,4 +377,24 @@ async function saveReorder(ids) {
   } catch (e) {
     showToast('❌ ' + e);
   }
+}
+
+// ── Import Pool (as one provider) ────────────
+function togglePoolImportMenu() {
+  document.querySelectorAll('[id^="import-dropdown-"]').forEach(el => el.classList.add('hidden'));
+  const d = document.getElementById('import-pool-dropdown');
+  if (d) d.classList.toggle('hidden');
+}
+
+async function importPoolTo(tool) {
+  document.getElementById('import-pool-dropdown')?.classList.add('hidden');
+  try {
+    const status = await invoke('get_status');
+    const key = status.keys[0]?.key;
+    if (!key) { showToast('❌ 无可用 Key'); return; }
+    const r = await invoke('import_to_tool', {
+      req: { model: '号池', model_name: '', api_key: key, tool }
+    });
+    showToast(r);
+  } catch (e) { showToast('❌ ' + e); }
 }

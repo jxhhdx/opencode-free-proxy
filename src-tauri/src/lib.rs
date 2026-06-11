@@ -177,11 +177,6 @@ async fn init_pool_builtins(
         entries: pool.entries.clone(),
     })
 }
-    Ok(PoolStatus {
-                pool_mode: pool.pool_mode,
-                entries: pool.entries.clone(),
-            })
-        }
 
         #[tauri::command]
         async fn reorder_pool(
@@ -298,6 +293,8 @@ async fn import_to_tool(
         other => Err(format!("Unknown tool: {}. Supported: claude, codex, ccswitch", other)),
     }
 }
+
+
 
 fn urlencoding(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
