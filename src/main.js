@@ -59,13 +59,7 @@ async function refreshStatus() {
   try {
     const status = await invoke('get_status');
     updateStatusUI(status);
-    const models = await loadModels();
-    // 自动批量测速所有模型
-    if (models && models.length > 0) {
-      showToast(`⏳ 正在批量测速 ${models.length} 个模型...`);
-      await batchTestAllModels(models);
-      showToast('✅ 批量测速完成');
-    }
+    await loadModels();
   } catch (e) {
     statusDot.className = 'status-dot offline';
     statusText.textContent = '连接失败: ' + e;
@@ -119,6 +113,32 @@ async function loadModels() {
 }
 
 // ── Batch Speed Test ──────────────────────────
+async function batchTestAll() {
+  if (isRefreshing) return;
+  isRefreshing = true;
+
+  const btn = document.getElementById('batchTestBtn');
+  if (btn) btn.disabled = true;
+
+  try {
+    const models = await loadModels();
+    if (models && models.length > 0) {
+      showToast(`⏳ 一键测速 ${models.length} 个模型...`);
+      for (const m of models) {
+        await testModel(m.id);
+      }
+      showToast('✅ 测速完成');
+    } else {
+      showToast('暂无模型可测速');
+    }
+  } catch (e) {
+    showToast('❌ 测速出错: ' + e);
+  } finally {
+    isRefreshing = false;
+    if (btn) btn.disabled = false;
+  }
+}
+
 async function batchTestAllModels(models) {
   for (const m of models) {
     await testModel(m.id);
