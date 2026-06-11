@@ -90,38 +90,7 @@ function updateStatusUI(status) {
   `).join('');
 }
 
-// ── Pool Mode Toggle ──────────────────────────
-async function togglePoolMode() {
-  const input = document.getElementById('poolModeInput');
-  const newMode = input.checked;
-  try {
-    await invoke('set_pool_mode', { req: { pool_mode: newMode } });
-    updatePoolToggleUI(newMode);
-    showToast(newMode ? '🔀 号池模式已开启' : '🔀 号池模式已关闭');
-  } catch (e) {
-    input.checked = !newMode;
-    showToast('❌ ' + e);
-  }
-}
 
-function updatePoolToggleUI(enabled) {
-  const toggle = document.getElementById('poolToggle');
-  const dot = document.getElementById('poolToggleDot');
-  const label = document.getElementById('poolModeLabel');
-  if (enabled) {
-    toggle.classList.remove('bg-[#2a2d3e]');
-    toggle.classList.add('bg-[#6c8cff]');
-    dot.classList.remove('bg-muted', 'left-0.5');
-    dot.classList.add('bg-white', 'left-[18px]');
-    label.textContent = '号池开';
-  } else {
-    toggle.classList.add('bg-[#2a2d3e]');
-    toggle.classList.remove('bg-[#6c8cff]');
-    dot.classList.add('bg-muted', 'left-0.5');
-    dot.classList.remove('bg-white', 'left-[18px]');
-    label.textContent = '号池关';
-  }
-}
 
 // ── Add Provider Dialog ──────────────────────
 function showAddDialog() {
@@ -165,8 +134,6 @@ async function loadPool() {
   try {
     const pool = await invoke('get_model_pool');
     document.getElementById('modelCount').textContent = pool.entries.length;
-    document.getElementById('poolModeInput').checked = pool.pool_mode;
-    updatePoolToggleUI(pool.pool_mode);
     renderPool(pool.entries);
     return pool.entries;
   } catch (e) {

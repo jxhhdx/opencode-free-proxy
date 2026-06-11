@@ -88,18 +88,6 @@ async fn get_model_pool(
     })
 }
 
-#[tauri::command]
-async fn set_pool_mode(
-    state: tauri::State<'_, AppState>,
-    req: TogglePoolRequest,
-) -> Result<bool, String> {
-    let mut pool = state.proxy.model_pool.write().await;
-    pool.pool_mode = req.pool_mode;
-    if let Some(ref config_dir) = state.config_dir {
-        pool.save(&config_dir.join("model_pool.json"));
-    }
-    Ok(pool.pool_mode)
-}
 
 #[tauri::command]
 async fn upsert_pool_entry(
@@ -530,7 +518,6 @@ pub fn run() {
             run_speed_test_cmd,
             import_to_tool,
             get_model_pool,
-            set_pool_mode,
             upsert_pool_entry,
             remove_pool_entry,
             toggle_pool_entry,

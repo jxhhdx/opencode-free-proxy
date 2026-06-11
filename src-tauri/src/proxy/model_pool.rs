@@ -39,7 +39,7 @@ pub struct ModelPool {
 impl ModelPool {
     pub fn new() -> Self {
         ModelPool {
-            pool_mode: false,
+            pool_mode: true,
             entries: Vec::new(),
         }
     }
