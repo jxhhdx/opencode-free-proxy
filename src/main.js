@@ -155,7 +155,8 @@ function renderPool(entries) {
   container.innerHTML = sorted.map(e => {
     const isOpenCode = e.provider_type === 'opencode';
     return `
-    <div draggable="true" data-id="${escapeHtml(e.id)}" ondragstart="onDragStart(event)" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragend="onDragEnd(event)" class="flex items-center justify-between px-3 py-2.5 rounded-md bg-surface2 border border-border ${!e.enabled ? 'opacity-50' : ''} cursor-grab active:cursor-grabbing">
+    <div data-id="${escapeHtml(e.id)}" class="flex items-center justify-between px-3 py-2.5 rounded-md bg-surface2 border border-border ${!e.enabled ? 'opacity-50' : ''}">
+      <span class="model-drag-handle flex-shrink-0 mr-2 text-muted hover:text-white cursor-grab active:cursor-grabbing text-sm leading-none select-none" title="拖动排序">⠿</span>
       <div class="flex items-center gap-2 min-w-0">
         <button onclick="toggleEntry('${escapeHtml(e.id)}')" class="flex-shrink-0 w-7 h-4 rounded-full transition-colors ${e.enabled ? 'bg-[#6c8cff]' : 'bg-[#2a2d3e]'} relative cursor-pointer">
           <div class="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${e.enabled ? 'left-[14px]' : 'left-0.5'}"></div>
@@ -190,9 +191,10 @@ function renderPool(entries) {
   }).join('');
 
   // Init SortableJS for drag-and-drop reorder
-  if (window.Sortable && !container.classList.contains('sortable-initialized')) {
-    container.classList.add('sortable-initialized');
-    new Sortable(container, {
+  if (window.Sortable) {
+    // Destroy previous instance if exists (re-render safe)
+    if (container.sortable) container.sortable.destroy();
+    container.sortable = new Sortable(container, {
       animation: 150,
       handle: '.model-drag-handle',
       onEnd: async function(evt) {
