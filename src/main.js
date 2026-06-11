@@ -7,6 +7,7 @@ const { invoke, listen } = window.__TAURI__.core;
 // ── State ──────────────────────────────────────
 let testingModels = new Set();
 let isRefreshing = false;
+let resultsCache = {};  // modelId -> result object, persists across refreshes
 
 // ── Init ───────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -142,6 +143,11 @@ function renderModels(models) {
       </div>
     </div>
   `).join('');
+
+  // Re-apply cached results after re-render
+  for (const [modelId, result] of Object.entries(resultsCache)) {
+    displayTestResult(modelId, result);
+  }
 }
 
 // ── Import to Tool ──────────────────────────
@@ -182,6 +188,8 @@ async function batchTestAll() {
   if (btn) btn.disabled = true;
 
   try {
+    // Clear cached results before new batch test
+    resultsCache = {};
     const models = await loadModels();
     if (models && models.length > 0) {
       showToast(`⏳ 一键测速 ${models.length} 个模型...`);
@@ -221,6 +229,9 @@ async function testModel(modelId) {
 }
 
 function displayTestResult(modelId, result) {
+  // Save to cache so results survive refresh/re-render
+  resultsCache[modelId] = result;
+
   const results = document.getElementById('results-' + modelId);
   if (!results) return;
 
