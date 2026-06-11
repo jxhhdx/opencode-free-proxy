@@ -87,13 +87,21 @@ tailwind.config = {
         <span class="text-[11px] px-2 py-0.5 rounded-full bg-surface2 text-muted" id="modelCount">0</span>
       </div>
     </div>
-    <div class="flex gap-2 mb-3">
-      <input type="text" id="customModelInput" placeholder="模型名称..." class="flex-1 px-3 py-2 rounded-md bg-surface2 border border-border text-sm text-white placeholder-muted outline-none focus:border-[#6c8cff] transition-colors" />
-      <input type="text" id="customUrlInput" placeholder="API URL (可选)" class="flex-1 px-3 py-2 rounded-md bg-surface2 border border-border text-sm text-white placeholder-muted outline-none focus:border-[#6c8cff] transition-colors" />
-    </div>
-    <div class="flex gap-2 mb-3">
-      <input type="text" id="customKeyInput" placeholder="API Key (可选)" class="flex-1 px-3 py-2 rounded-md bg-surface2 border border-border text-sm text-white placeholder-muted outline-none focus:border-[#6c8cff] transition-colors" />
-      <button onclick="addCustomProvider()" class="px-3.5 py-2 rounded-md bg-[#6c8cff] text-white text-xs font-medium hover:bg-[#4a6adf] transition-all active:scale-95 cursor-pointer whitespace-nowrap">+ 添加提供商</button>
+    <!-- Add Provider Dialog -->
+    <div id="addDialog" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div class="bg-surface border border-border rounded-xl p-5 w-full max-w-sm mx-4 shadow-2xl">
+        <h3 class="text-sm font-semibold mb-4">添加提供商</h3>
+        <div class="flex flex-col gap-3">
+          <input id="dlgName" placeholder="名称 *" class="w-full px-3 py-2 rounded-md bg-surface2 border border-border text-sm text-white placeholder-muted outline-none focus:border-[#6c8cff] transition-colors" autofocus />
+          <input id="dlgModel" placeholder="模型名 *" class="w-full px-3 py-2 rounded-md bg-surface2 border border-border text-sm text-white placeholder-muted outline-none focus:border-[#6c8cff] transition-colors" />
+          <input id="dlgUrl" placeholder="API 地址（可选，为空使用 OpenCode 免费）" class="w-full px-3 py-2 rounded-md bg-surface2 border border-border text-sm text-white placeholder-muted outline-none focus:border-[#6c8cff] transition-colors" />
+          <input id="dlgKey" type="password" placeholder="API Key（可选）" class="w-full px-3 py-2 rounded-md bg-surface2 border border-border text-sm text-white placeholder-muted outline-none focus:border-[#6c8cff] transition-colors" />
+        </div>
+        <div class="flex justify-end gap-2 mt-4">
+          <button onclick="hideAddDialog()" class="px-3.5 py-2 rounded-md bg-surface2 text-muted text-xs font-medium border border-border hover:bg-border transition-all cursor-pointer">取消</button>
+          <button onclick="confirmAddProvider()" class="px-3.5 py-2 rounded-md bg-[#6c8cff] text-white text-xs font-medium hover:bg-[#4a6adf] transition-all cursor-pointer">添加</button>
+        </div>
+      </div>
     </div>
     <div class="flex flex-col gap-1.5" id="modelList">
       <div class="text-center py-5 text-muted text-sm" id="modelEmpty">加载模型中...</div>
