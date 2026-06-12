@@ -1,55 +1,47 @@
 import { useState } from "react";
 import { upsertPoolEntry } from "../hooks/useTauri";
+import { useI18n } from "../i18n/context";
 
-export default function AddProviderDialog({
-  onClose, onAdded, showToast,
-}: {
-  onClose: () => void;
-  onAdded: () => void;
-  showToast: (msg: string) => void;
+export default function AddProviderDialog({ onClose, onAdded, showToast }: {
+  onClose: () => void; onAdded: () => void; showToast: (msg: string) => void;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [modelName, setModelName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [format, setFormat] = useState("openai");
+  const S: React.CSSProperties = { width: "100%", padding: "8px 12px", borderRadius: 6, background: "var(--surface2)", border: "1px solid var(--border)", fontSize: 13, color: "var(--text)", outline: "none" };
 
   const handleSubmit = async () => {
     if (!name.trim()) { showToast("Enter a name"); return; }
     try {
-      await upsertPoolEntry({
-        id: null, name: name.trim(), base_url: baseUrl.trim(), api_key: apiKey.trim(),
-        model_name: modelName.trim() || name.trim(), priority: 999, enabled: true,
-        builtin: false, provider_type: baseUrl.trim() ? "custom" : "opencode", api_format: format,
-      });
-      showToast("Added: " + name);
-      onAdded();
+      await upsertPoolEntry({ id: null, name: name.trim(), base_url: baseUrl.trim(), api_key: apiKey.trim(), model_name: modelName.trim() || name.trim(), priority: 999, enabled: true, builtin: false, provider_type: baseUrl.trim() ? "custom" : "opencode", api_format: format });
+      showToast(t.pool.added + ": " + name); onAdded();
     } catch (e: any) { showToast("Error: " + e); }
   };
-
-  const inputStyle: React.CSSProperties = { width: "100%", padding: "8px 12px", borderRadius: 6, background: "var(--surface2)", border: "1px solid var(--border)", fontSize: 13, color: "var(--text)", outline: "none" };
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, width: "100%", maxWidth: "24rem", margin: "0 16px" }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Add Provider</h3>
+        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>{t.dialog.addProvider}</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <input placeholder="Name *" value={name} onChange={e => setName(e.target.value)} autoFocus style={inputStyle} />
-          <input placeholder="Model name *" value={modelName} onChange={e => setModelName(e.target.value)} style={inputStyle} />
-          <input placeholder="API URL (empty = use OpenCode free)" value={baseUrl} onChange={e => setBaseUrl(e.target.value)} style={inputStyle} />
-          <input type="password" placeholder="API Key (optional)" value={apiKey} onChange={e => setApiKey(e.target.value)} style={inputStyle} />
+          <input placeholder={t.dialog.name} value={name} onChange={e => setName(e.target.value)} autoFocus style={S} />
+          <input placeholder={t.dialog.modelName} value={modelName} onChange={e => setModelName(e.target.value)} style={S} />
+          <input placeholder={t.dialog.apiUrl} value={baseUrl} onChange={e => setBaseUrl(e.target.value)} style={S} />
+          <input type="password" placeholder={t.dialog.apiKey} value={apiKey} onChange={e => setApiKey(e.target.value)} style={S} />
           <div style={{ display: "flex", gap: 8 }}>
             {["openai", "anthropic"].map(f => (
               <label key={f} style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 6, border: "1px solid" + (format === f ? " var(--accent)" : " var(--border)"), background: "var(--surface2)", cursor: "pointer", fontSize: 13, color: "var(--text)" }}>
                 <input type="radio" checked={format === f} onChange={() => setFormat(f)} style={{ accentColor: "var(--accent)" }} />
-                {f === "openai" ? "OpenAI" : "Anthropic"}
+                {f === "openai" ? t.dialog.openai : t.dialog.anthropic}
               </label>
             ))}
           </div>
         </div>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "8px 14px", borderRadius: 6, background: "var(--surface2)", color: "var(--muted)", fontSize: 12, fontWeight: 500, border: "1px solid var(--border)", cursor: "pointer" }}>Cancel</button>
-          <button onClick={handleSubmit} style={{ padding: "8px 14px", borderRadius: 6, background: "var(--accent)", color: "white", fontSize: 12, fontWeight: 500, border: "none", cursor: "pointer" }}>Add</button>
+          <button onClick={onClose} style={{ padding: "8px 14px", borderRadius: 6, background: "var(--surface2)", color: "var(--muted)", fontSize: 12, fontWeight: 500, border: "1px solid var(--border)", cursor: "pointer" }}>{t.dialog.cancel}</button>
+          <button onClick={handleSubmit} style={{ padding: "8px 14px", borderRadius: 6, background: "var(--accent)", color: "white", fontSize: 12, fontWeight: 500, border: "none", cursor: "pointer" }}>{t.dialog.add}</button>
         </div>
       </div>
     </div>

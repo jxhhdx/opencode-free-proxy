@@ -1,18 +1,21 @@
 import { useState, useEffect, useCallback } from "react";
+import { I18nProvider } from "./i18n/context";
 import Header from "./components/Header";
 import ApiKeys from "./components/ApiKeys";
 import ModelPool from "./components/ModelPool";
 import AddProviderDialog from "./components/AddProviderDialog";
 import Toast from "./components/Toast";
+import Settings from "./components/Settings";
 import { getStatus, getModelPool } from "./hooks/useTauri";
 import type { AppStatus, ModelPoolEntry } from "./types";
 
-export default function App() {
+function AppInner() {
   const [status, setStatus] = useState<AppStatus | null>(null);
   const [pool, setPool] = useState<ModelPoolEntry[]>([]);
   const [results, setResults] = useState<Record<string, any>>({});
-  const [toast, setToast] = useState<string>("");
+  const [toast, setToast] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const showToast = useCallback((msg: string) => {
@@ -26,38 +29,24 @@ export default function App() {
       const [s, p] = await Promise.all([getStatus(), getModelPool()]);
       setStatus(s);
       setPool(p.entries);
-    } catch (e: any) {
-      showToast("Error: " + e);
-    }
+    } catch {}
     setLoading(false);
-  }, [showToast]);
+  }, []);
 
   useEffect(() => { refresh(); }, []);
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-5">
-      <Header status={status} loading={loading} onRefresh={refresh} />
-
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "20px 24px" }}>
+      <Header status={status} loading={loading} onRefresh={refresh} onSettings={() => setShowSettings(true)} />
       <ApiKeys keys={status?.keys || []} />
-
-      <ModelPool
-        entries={pool}
-        results={results}
-        setResults={setResults}
-        onRefresh={refresh}
-        showToast={showToast}
-        onAddClick={() => setShowAdd(true)}
-      />
-
-      {showAdd && (
-        <AddProviderDialog
-          onClose={() => setShowAdd(false)}
-          onAdded={() => { setShowAdd(false); refresh(); }}
-          showToast={showToast}
-        />
-      )}
-
+      <ModelPool entries={pool} results={results} setResults={setResults} onRefresh={refresh} showToast={showToast} onAddClick={() => setShowAdd(true)} />
+      {showAdd && <AddProviderDialog onClose={() => setShowAdd(false)} onAdded={() => { setShowAdd(false); refresh(); }} showToast={showToast} />}
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
       <Toast message={toast} />
     </div>
   );
+}
+
+export default function App() {
+  return <I18nProvider><AppInner /></I18nProvider>;
 }
