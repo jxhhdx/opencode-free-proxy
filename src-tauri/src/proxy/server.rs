@@ -227,13 +227,12 @@ async fn chat_completions(
         match result {
             Ok(response) => return response,
             Err(e) => {
-                let is_retryable = e.contains("429") || e.contains("502") || e.contains("504") || e.contains("timeout") || e.contains("rate limit");
-                if is_retryable && m != models.last().unwrap() {
-                    info!("Failover: {} -&gt; next", m);
-                    last_error = format!("{} failed: {}", m, e);
+                if m != models.last().unwrap() {
+                    info!("Failover: {} -> next", m);
+                    last_error = format!("{}: {}", m, e);
                     continue;
                 }
-                last_error = format!("{} failed: {}", m, e);
+                last_error = format!("{}: {}", m, e);
                 break;
             }
         }
