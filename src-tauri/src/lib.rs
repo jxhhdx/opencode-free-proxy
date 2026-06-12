@@ -12,6 +12,7 @@ use tracing::info;
 mod proxy;
 
 use proxy::auth::AuthManager;
+use proxy::log::AppLog;
 use proxy::model_pool::{ModelPool, ModelPoolEntry};
 use proxy::server::{run_speed_test, ProxyState, SpeedTestResult};
 use proxy::zen::{SessionManager, ZenClient};
@@ -282,6 +283,13 @@ async fn import_to_tool(
     }
 }
 
+#[tauri::command]
+async fn get_logs(
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<proxy::log::LogEntry>, String> {
+    Ok(state.proxy.log.get_all())
+}
+
 
 
 fn urlencoding(s: &str) -> String {
@@ -471,6 +479,7 @@ pub fn run() {
                 sessions: Arc::new(sessions),
                 custom_models: Arc::new(RwLock::new(custom_models)),
                 model_pool: Arc::new(RwLock::new(model_pool)),
+                log: Arc::new(AppLog::new(200)),
             };
 
             let server_running =
@@ -522,6 +531,7 @@ pub fn run() {
             remove_pool_entry,
             toggle_pool_entry,
             init_pool_builtins,
+            get_logs,
             reorder_pool,
         ])
         .run(tauri::generate_context!())

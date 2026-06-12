@@ -17,6 +17,7 @@ use tracing::info;
 
 use super::anthropic::{anthropic_to_openai, openai_to_anthropic, AnthropicStreamConverter};
 use super::auth::AuthManager;
+use super::log::AppLog;
 use super::model_pool::ModelPool;
 use super::zen::{SessionManager, ZenClient};
 
@@ -35,6 +36,7 @@ pub struct ProxyState {
     pub sessions: Arc<SessionManager>,
     pub custom_models: Arc<RwLock<Vec<String>>>,
     pub model_pool: Arc<RwLock<ModelPool>>,
+    pub log: Arc<AppLog>,
 }
 
 pub fn create_router(state: Arc<ProxyState>) -> Router {
@@ -478,11 +480,65 @@ pub async fn run_speed_test(
         {"role": "user", "content": "Reply with exactly 'OK' and nothing else."}
     ]);
 
-    let session_id = state.sessions.get_session("speedtest");
-    let (_, body_str) =
-        ZenClient::build_request_body(model, &test_messages, false, None);
+    // Check model pool for custom provider URL
+    let pool = state.model_pool.read().await;
+    let entry = pool.get_by_name(model);
+    let use_custom = entry.and_then(|e| {
+        if !e.base_url.is_empty() {
+            Some((e.base_url.clone(), e.api_key.clone(), e.model_name.clone()))
+        } else {
+            None
+        }
+    });
+    drop(pool);
 
     let start = Instant::now();
+
+    if let Some((ref base_url, ref api_key, ref model_name)) = use_custom {
+        // Custom provider: send to user's API endpoint
+        let client = reqwest::Client::new();
+        let url = format!("{}/v1/chat/completions", base_url.trim_end_matches('/'));
+        let body = serde_json::json!({
+            "model": model_name,
+            "messages": test_messages,
+            "stream": false,
+        });
+        let resp = client.post(&url)
+            .header("Content-Type", "application/json")
+            .header("Authorization", format!("Bearer {}", api_key))
+            .json(&body)
+            .send()
+            .await;
+
+        match resp {
+            Ok(r) => {
+                let elapsed = start.elapsed().as_millis() as u64;
+                if !r.status().is_success() {
+                    let status = r.status().as_u16();
+                    return SpeedTestResult {
+                        model: model.to_string(), success: false,
+                        error: Some(format!("HTTP {}", status)),
+                        latency_ms: elapsed, tokens_per_sec: 0.0, total_tokens: 0,
+                        response_preview: String::new(),
+                    };
+                }
+                match r.json::<serde_json::Value>().await {
+                    Ok(data) => {
+                        let total = data.pointer("/usage/total_tokens").and_then(|t| t.as_u64()).unwrap_or(0);
+                        let comp = data.pointer("/usage/completion_tokens").and_then(|t| t.as_u64()).unwrap_or(0);
+                        let tps = if elapsed > 0 && comp > 0 { (comp as f64) / (elapsed as f64 / 1000.0) } else { 0.0 };
+                        let preview = data.pointer("/choices/0/message/content").and_then(|c| c.as_str()).unwrap_or("").chars().take(100).collect();
+                        SpeedTestResult { model: model.to_string(), success: true, error: None, latency_ms: elapsed, tokens_per_sec: tps, total_tokens: total, response_preview: preview }
+                    }
+                    Err(e) => SpeedTestResult { model: model.to_string(), success: false, error: Some(format!("Parse error: {}", e)), latency_ms: elapsed, tokens_per_sec: 0.0, total_tokens: 0, response_preview: String::new() }
+                }
+            }
+            Err(e) => SpeedTestResult { model: model.to_string(), success: false, error: Some(format!("Request failed: {}", e)), latency_ms: start.elapsed().as_millis() as u64, tokens_per_sec: 0.0, total_tokens: 0, response_preview: String::new() }
+        }
+    } else {
+        // OpenCode free model: use Zen API
+        let session_id = state.sessions.get_session("speedtest");
+        let (_, body_str) = ZenClient::build_request_body(model, &test_messages, false, None);
 
     match state.zen.send_non_streaming(body_str, &session_id).await {
         Ok((status, resp)) => {
@@ -545,4 +601,5 @@ pub async fn run_speed_test(
             response_preview: String::new(),
         },
     }
+    }  // closes else
 }
