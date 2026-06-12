@@ -49,6 +49,46 @@ pub fn create_router(state: Arc<ProxyState>) -> Router {
         .with_state(state)
 }
 
+async fn try_send_streaming(zen: &ZenClient, body: &str, session: &str) -> Result<Response, String> {
+    match zen.send_streaming(body.to_string(), session).await {
+        Ok(upstream_resp) => {
+            let status = upstream_resp.status();
+            if status != 200 {
+                let text = upstream_resp.text().await.unwrap_or_default();
+                return Err(format!("{}: {}", status.as_u16(), text));
+            }
+            let (tx, rx) = tokio::sync::mpsc::channel::<Bytes>(64);
+            let mut s = upstream_resp.bytes_stream();
+            tokio::spawn(async move {
+                while let Some(chunk) = s.next().await {
+                    if let Ok(b) = chunk { if tx.send(b).await.is_err() { break; } }
+                }
+            });
+            let stream = ReceiverStream::new(rx).map(|b| Ok::<_, std::convert::Infallible>(b));
+            Ok(Response::builder()
+                .header("Content-Type", "text/event-stream")
+                .header("Cache-Control", "no-cache")
+                .header("Connection", "keep-alive")
+                .body(Body::from_stream(stream))
+                .unwrap_or_default())
+        }
+        Err(e) => Err(format!("Request error: {}", e)),
+    }
+}
+
+async fn try_send_non_streaming(zen: &ZenClient, body: &str, session: &str) -> Result<Response, String> {
+    match zen.send_non_streaming(body.to_string(), session).await {
+        Ok((status, resp)) => {
+            if status != 200 || ZenClient::is_error(&resp) {
+                let msg = ZenClient::extract_error(&resp);
+                return Err(format!("{}: {}", status.as_u16(), msg));
+            }
+            Ok(Json(resp).into_response())
+        }
+        Err(e) => Err(format!("Request error: {}", e)),
+    }
+}
+
 fn get_all_models(custom_models: &[String]) -> Vec<String> {
     let mut all: Vec<String> = MODELS.iter().map(|m| m.to_string()).collect();
     for cm in custom_models {
@@ -158,81 +198,49 @@ async fn chat_completions(
         "OpenAI chat completion"
     );
 
-    let (_, body_str) = ZenClient::build_request_body(&model, &messages, stream, tools);
-
-    if stream {
-        match state.zen.send_streaming(body_str, &session_id).await {
-            Ok(upstream_resp) => {
-                let status = upstream_resp.status();
-                if status != 200 {
-                    let text = upstream_resp
-                        .text()
-                        .await
-                        .unwrap_or_default();
-                    return (StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY),
-                        Json(serde_json::json!({"error": {"message": text, "type": "upstream_error"}})))
-                        .into_response();
-                }
-
-                let (tx, rx) = tokio::sync::mpsc::channel::<Bytes>(64);
-                let mut upstream_stream = upstream_resp.bytes_stream();
-
-                tokio::spawn(async move {
-                    while let Some(chunk) = upstream_stream.next().await {
-                        match chunk {
-                            Ok(b) => {
-                                if tx.send(b).await.is_err() {
-                                    break;
-                                }
-                            }
-                            Err(_) => break,
-                        }
-                    }
-                });
-
-                let stream =
-                    ReceiverStream::new(rx).map(|b| Ok::<_, std::convert::Infallible>(b));
-
-                Response::builder()
-                    .header("Content-Type", "text/event-stream")
-                    .header("Cache-Control", "no-cache")
-                    .header("Connection", "keep-alive")
-                    .header("X-Accel-Buffering", "no")
-                    .body(Body::from_stream(stream))
-                    .unwrap_or_default()
-            }
-            Err(e) => (
-                StatusCode::BAD_GATEWAY,
-                Json(serde_json::json!({
-                    "error": {"message": format!("Upstream error: {}", e), "type": "upstream_error"}
-                })),
-            )
-                .into_response(),
-        }
-    } else {
-        match state.zen.send_non_streaming(body_str, &session_id).await {
-            Ok((status, resp)) => {
-                if status != 200 || ZenClient::is_error(&resp) {
-                    let msg = ZenClient::extract_error(&resp);
-                    return (
-                        StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY),
-                        Json(serde_json::json!({
-                            "error": {"message": format!("{} (free model rate limit)", msg), "type": "rate_limit_error"}
-                        })),
-                    )
-                        .into_response();
-                }
-                Json(resp).into_response()
-            }
-            Err(e) => (
-                StatusCode::BAD_GATEWAY,
-                Json(serde_json::json!({
-                    "error": {"message": format!("Upstream error: {}", e), "type": "upstream_error"}
-                })),
-            )
-                .into_response(),
+    let pool = state.model_pool.read().await;
+    let enabled = pool.get_enabled();
+    // Build ordered list: requested model first, then others by priority
+    let mut models: Vec<String> = Vec::new();
+    if let Some(e) = pool.get_by_name(&model) {
+        if e.enabled { models.push(e.model_name.clone()); }
+    }
+    for e in &enabled {
+        if !models.contains(&e.model_name) {
+            models.push(e.model_name.clone());
         }
     }
+    if models.is_empty() { models.push(model.clone()); }
+    drop(pool);
+
+    let mut last_error = String::from("All models failed");
+    for m in &models {
+        // Skip if different from requested and requested is still in list (tried first)
+        // Build request for this model
+        let (_, body_str) = ZenClient::build_request_body(m, &messages, stream, tools);
+        let result = if stream {
+            try_send_streaming(&state.zen, &body_str, &session_id).await
+        } else {
+            try_send_non_streaming(&state.zen, &body_str, &session_id).await
+        };
+
+        match result {
+            Ok(response) => return response,
+            Err(e) => {
+                let is_retryable = e.contains("429") || e.contains("502") || e.contains("504") || e.contains("timeout") || e.contains("rate limit");
+                if is_retryable && m != models.last().unwrap() {
+                    info!("Failover: {} -&gt; next", m);
+                    last_error = format!("{} failed: {}", m, e);
+                    continue;
+                }
+                last_error = format!("{} failed: {}", m, e);
+                break;
+            }
+        }
+    }
+    return (StatusCode::SERVICE_UNAVAILABLE,
+        Json(serde_json::json!({"error": {"message": last_error, "type": "failover_error"}})))
+        .into_response();
 }
 
 // ── POST /v1/messages (Anthropic format) ──────────────────────────────
