@@ -52,9 +52,10 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          name: OpenCode Free Proxy ${{ github.ref_name }}
           files: OpenCode-Free-Proxy-macOS.dmg/*.dmg
           body: |
-            ## OpenCode Free Proxy v${{ github.ref_name }}
+            ## OpenCode Free Proxy ${{ github.ref_name }}
 
             Download the latest macOS build below.
 
