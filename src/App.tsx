@@ -7,7 +7,7 @@ import ModelPool from "./components/ModelPool";
 import AddProviderDialog from "./components/AddProviderDialog";
 import Toast from "./components/Toast";
 import Settings from "./components/Settings";
-import { getStatus, getModelPool } from "./hooks/useTauri";
+import { getStatus, getModelPool, detectMimo } from "./hooks/useTauri";
 import type { AppStatus, ModelPoolEntry } from "./types";
 
 function AppInner() {
@@ -28,6 +28,7 @@ function AppInner() {
     setLoading(true);
     try {
       const [s, p] = await Promise.all([getStatus(), getModelPool()]);
+      detectMimo().catch(() => {});
       setStatus(s);
       setPool(p.entries);
     } catch {}

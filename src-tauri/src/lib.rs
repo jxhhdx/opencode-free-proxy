@@ -294,6 +294,58 @@ async fn get_logs(
     Ok(state.proxy.log.get_all())
 }
 
+#[tauri::command]
+async fn detect_mimo(
+    state: tauri::State<'_, AppState>,
+) -> Result<String, String> {
+    // Check if mimo CLI is installed
+    let mimo_path = std::env::current_dir()
+        .map(|p| p.join("node_modules").join(".bin").join("mimo"))
+        .ok()
+        .filter(|p| p.exists());
+
+    // Also check common locations
+    let mimo_in_path = std::process::Command::new("which")
+        .arg("mimo")
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .is_some();
+
+    if !mimo_in_path && mimo_path.is_none() {
+        return Err("MiMo CLI not found on this system".into());
+    }
+
+    // Check for free client ID
+    let home = dirs::home_dir().ok_or("No home dir")?;
+    let client_file = home.join(".local/share/mimocode/mimo-free-client");
+    let has_client = client_file.exists();
+
+    // Add to pool
+    let mut pool = state.proxy.model_pool.write().await;
+    if pool.get_by_name("MiMo Auto").is_none() {
+        pool.upsert(proxy::model_pool::ModelPoolEntry {
+            id: "mimo-auto".into(),
+            name: "MiMo Auto".into(),
+            base_url: "https://api.xiaomimimo.com/api/free-ai/openai".into(),
+            api_key: String::new(),
+            model_name: "mimo-auto".into(),
+            priority: 50,
+            enabled: true,
+            builtin: false,
+            provider_type: "custom".into(),
+            api_format: "openai".into(),
+        });
+        if let Some(ref config_dir) = state.config_dir {
+            pool.save(&config_dir.join("model_pool.json"));
+        }
+        state.proxy.log.info("Auto-detected MiMo CLI and added to pool".into());
+        Ok(format!("✅ MiMo detected! Added to pool. {}", if has_client { "Free client found." } else { "" }))
+    } else {
+        Ok("MiMo already in pool".into())
+    }
+}
+
 
 
 fn urlencoding(s: &str) -> String {
@@ -542,6 +594,7 @@ pub fn run() {
             toggle_pool_entry,
             init_pool_builtins,
             get_logs,
+            detect_mimo,
             reorder_pool,
         ])
         .run(tauri::generate_context!())

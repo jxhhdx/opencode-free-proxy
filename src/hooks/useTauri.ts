@@ -48,3 +48,7 @@ export function importToTool(req: {
 }): Promise<string> {
   return invoke("import_to_tool", { req });
 }
+
+export function detectMimo(): Promise<string> {
+  return invoke("detect_mimo");
+}
