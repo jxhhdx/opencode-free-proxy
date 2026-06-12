@@ -1,8 +1,10 @@
 
 import { useI18n } from "../i18n/context";
+import { useTheme } from "../i18n/theme";
 
 export default function Settings({ onClose }: { onClose: () => void }) {
   const { t, lang, setLang } = useI18n();
+  const { theme, setTheme } = useTheme();
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
@@ -33,6 +35,27 @@ export default function Settings({ onClose }: { onClose: () => void }) {
                   borderColor: lang === l ? "var(--accent)" : "var(--border)",
                 }}>
                 {l === "en" ? t.settings.en : t.settings.zh}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderTop: "1px solid var(--border)", marginTop: 8, paddingTop: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text)" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "var(--muted)" }}><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            Theme
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {(["dark", "light", "system"] as const).map((t) => (
+              <button key={t} onClick={() => setTheme(t)}
+                style={{
+                  padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 500,
+                  border: "1px solid", cursor: "pointer", transition: "all 0.15s",
+                  background: theme === t ? "var(--accent)" : "var(--surface2)",
+                  color: theme === t ? "white" : "var(--text)",
+                  borderColor: theme === t ? "var(--accent)" : "var(--border)",
+                }}>
+                {t === "dark" ? "Dark" : t === "light" ? "Light" : "System"}
               </button>
             ))}
           </div>

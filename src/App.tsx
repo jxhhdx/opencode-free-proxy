@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { I18nProvider } from "./i18n/context";
+import { ThemeProvider } from "./i18n/theme";
 import Header from "./components/Header";
 import ApiKeys from "./components/ApiKeys";
 import ModelPool from "./components/ModelPool";
@@ -48,5 +49,5 @@ function AppInner() {
 }
 
 export default function App() {
-  return <I18nProvider><AppInner /></I18nProvider>;
+  return <I18nProvider><ThemeProvider><AppInner /></ThemeProvider></I18nProvider>;
 }
