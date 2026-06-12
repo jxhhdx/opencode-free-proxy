@@ -125,10 +125,12 @@ async fn remove_pool_entry(
     id: String,
 ) -> Result<PoolStatus, String> {
     let mut pool = state.proxy.model_pool.write().await;
+    let name = pool.entries.iter().find(|e| e.id == id).map(|e| e.name.clone()).unwrap_or_default();
     pool.remove(&id);
     if let Some(ref config_dir) = state.config_dir {
         pool.save(&config_dir.join("model_pool.json"));
     }
+    state.proxy.log.info(format!("Removed provider: {}", name));
     Ok(PoolStatus {
         pool_mode: pool.pool_mode,
         entries: pool.entries.clone(),
@@ -141,10 +143,12 @@ async fn toggle_pool_entry(
     id: String,
 ) -> Result<PoolStatus, String> {
     let mut pool = state.proxy.model_pool.write().await;
+    let was = pool.entries.iter().find(|e| e.id == id).map(|e| e.enabled).unwrap_or(false);
     pool.toggle_enabled(&id);
     if let Some(ref config_dir) = state.config_dir {
         pool.save(&config_dir.join("model_pool.json"));
     }
+    state.proxy.log.info(format!("Toggle {}: {} -> {}", id, if was { "off" } else { "on" }, if !was { "on" } else { "off" }));
     Ok(PoolStatus {
         pool_mode: pool.pool_mode,
         entries: pool.entries.clone(),
@@ -394,8 +398,14 @@ async fn run_speed_test_cmd(
     req: SpeedTestRequest,
 ) -> Result<SpeedTestResult, String> {
     info!("Speed testing model: {}", req.model);
+    state.proxy.log.info(format!("Speed testing: {}", req.model));
 
     let result = run_speed_test(&state.proxy, &req.model).await;
+    if result.success {
+        state.proxy.log.info(format!("Speed test OK: {} ({}ms, {:.1} tok/s)", req.model, result.latency_ms, result.tokens_per_sec));
+    } else {
+        state.proxy.log.error(format!("Speed test FAILED: {} - {}", req.model, result.error.as_deref().unwrap_or("unknown")));
+    }
 
     // Emit event to frontend
     let _ = app_handle.emit("speed-test-complete", &result);
