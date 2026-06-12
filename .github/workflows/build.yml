@@ -14,21 +14,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          target: aarch64-apple-darwin
-
-      - name: Cache Cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -37,11 +22,13 @@ jobs:
       - name: Install npm deps
         run: npm install
 
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "^2"
-
       - name: Build App
-        run: APPLE_SIGNING_IDENTITY="-" cargo tauri build
+        uses: tauri-apps/tauri-action@v2
+        env:
+          APPLE_SIGNING_IDENTITY: "-"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          includeDebug: false
 
       - name: Upload .dmg
         uses: actions/upload-artifact@v4
@@ -50,35 +37,27 @@ jobs:
           path: src-tauri/target/release/bundle/dmg/*.dmg
           if-no-files-found: warn
 
-      - name: Upload .app
-        uses: actions/upload-artifact@v4
-        with:
-          name: OpenCode-Free-Proxy-macOS
-          path: src-tauri/target/release/bundle/macos/*.app
-          if-no-files-found: warn
-
   create-release:
     needs: build-macos
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            OpenCode-Free-Proxy-macOS.dmg/*.dmg
+          files: OpenCode-Free-Proxy-macOS.dmg/*.dmg
           body: |
-            ## OpenCode Free Proxy
+            ## OpenCode Free Proxy v${{ github.ref_name }}
 
             Download the latest macOS build below.
 
             ### How to use
             1. Download the `.dmg` file
             2. Open it and drag the app to Applications
-            3. First open: System Settings → Privacy → "Open anyway"
+            3. First time: System Settings → Privacy & Security → "Open anyway"
           draft: false
           prerelease: false
