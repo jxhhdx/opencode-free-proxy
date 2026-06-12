@@ -5,7 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { reorderPool, togglePoolEntry, removePoolEntry, runSpeedTest, importToTool, getStatus } from "../hooks/useTauri";
 import { useI18n } from "../i18n/context";
 
-const C = { accent: "#6c8cff", surface: "#181a22", surface2: "#1e2030", border: "#2a2d3e", text: "#e1e3eb", muted: "#8b8fa3", red: "#f87171", orange: "#fb923c" };
+const C = { accent: "#6c8cff", surface: "var(--surface)", surface2: "var(--surface2)", border: "var(--border)", text: "var(--text)", muted: "var(--muted)", red: "#f87171", orange: "#fb923c" };
 const btn: React.CSSProperties = { padding: "5px 12px", borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: "pointer", border: "none" };
 
 function Row({ entry, result, onToggle, onRemove, onImport, onTest }: any) {
