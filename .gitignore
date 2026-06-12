@@ -19,3 +19,5 @@ node_modules_old/
 node_modules
 node_modules_old
 node_modules_tmp
+nm_old
+node_modules
