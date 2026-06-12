@@ -11,7 +11,6 @@ const btn: React.CSSProperties = { padding: "5px 12px", borderRadius: 6, fontSiz
 function Row({ entry, result, onToggle, onRemove, onImport, onTest }: any) {
   const { t } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id });
-  const [showImp, setShowImp] = useState(false);
   const isOpen = entry.provider_type === "opencode";
   return (
     <div ref={setNodeRef} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 8, background: isDragging ? C.surface : C.surface2, border: `1px solid ${isDragging ? C.accent : C.border}`, transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.85 : entry.enabled ? 1 : 0.5, marginBottom: 6 }}>
@@ -32,18 +31,6 @@ function Row({ entry, result, onToggle, onRemove, onImport, onTest }: any) {
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-        <button onClick={() => onTest(entry.name)} style={{ ...btn, background: "transparent", color: C.muted, border: `1px solid ${C.border}`, fontSize: 11 }}>{t.pool.test}</button>
-        <div style={{ position: "relative" }}>
-          <button onClick={() => setShowImp(!showImp)} style={{ ...btn, background: "transparent", color: C.muted, border: `1px solid ${C.border}`, fontSize: 11 }}>{t.pool.import}</button>
-          {showImp && <>
-            <div style={{ position: "fixed", inset: 0, zIndex: 10 }} onClick={() => setShowImp(false)} />
-            <div style={{ position: "absolute", right: 0, top: "100%", marginTop: 4, zIndex: 20, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: 4, minWidth: 130, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
-              {[["claude", t.import.claude], ["codex", t.import.codex], ["ccswitch", t.import.ccswitch]].map(([k, label]) => (
-                <button key={k} onClick={() => { setShowImp(false); onImport(entry.name, k); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "6px 12px", fontSize: 12, color: C.text, cursor: "pointer", background: "none", border: "none", borderRadius: 4 }}>{label}</button>
-              ))}
-            </div>
-          </>}
-        </div>
         {!isOpen && <button onClick={() => onRemove(entry.id)} style={{ ...btn, background: "transparent", color: C.red, border: `1px solid ${C.border}`, fontSize: 11, padding: "5px 8px" }}>✕</button>}
       </div>
     </div>
