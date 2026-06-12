@@ -38,7 +38,7 @@ function AppInner() {
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "20px 24px" }}>
       <Header status={status} loading={loading} onRefresh={refresh} onSettings={() => setShowSettings(true)} />
-      <ApiKeys keys={status?.keys || []} />
+      <ApiKeys keys={status?.keys || []} showToast={showToast} />
       <ModelPool entries={pool} results={results} setResults={setResults} onRefresh={refresh} showToast={showToast} onAddClick={() => setShowAdd(true)} />
       {showAdd && <AddProviderDialog onClose={() => setShowAdd(false)} onAdded={() => { setShowAdd(false); refresh(); }} showToast={showToast} />}
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
