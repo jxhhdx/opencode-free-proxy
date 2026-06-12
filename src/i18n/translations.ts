@@ -50,6 +50,14 @@ export const en = {
     lang: "Language",
     zh: "中文",
     en: "English",
+    theme: "主题",
+    dark: "深色",
+    light: "浅色",
+    system: "跟随系统",
+    theme: "Theme",
+    dark: "Dark",
+    light: "Light",
+    system: "System",
   },
 };
 
@@ -107,5 +115,13 @@ export const zh: Translations = {
     lang: "语言",
     zh: "中文",
     en: "English",
+    theme: "主题",
+    dark: "深色",
+    light: "浅色",
+    system: "跟随系统",
+    theme: "Theme",
+    dark: "Dark",
+    light: "Light",
+    system: "System",
   },
 };

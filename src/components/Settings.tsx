@@ -46,16 +46,16 @@ export default function Settings({ onClose }: { onClose: () => void }) {
             Theme
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            {(["dark", "light", "system"] as const).map((t) => (
-              <button key={t} onClick={() => setTheme(t)}
+            {(["dark", "light", "system"] as const).map((th) => (
+              <button key={th} onClick={() => setTheme(th)}
                 style={{
                   padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 500,
                   border: "1px solid", cursor: "pointer", transition: "all 0.15s",
-                  background: theme === t ? "var(--accent)" : "var(--surface2)",
-                  color: theme === t ? "white" : "var(--text)",
-                  borderColor: theme === t ? "var(--accent)" : "var(--border)",
+                  background: theme === th ? "var(--accent)" : "var(--surface2)",
+                  color: theme === th ? "white" : "var(--text)",
+                  borderColor: theme === th ? "var(--accent)" : "var(--border)",
                 }}>
-                {t === "dark" ? "Dark" : t === "light" ? "Light" : "System"}
+                {th === "dark" ? t.settings.dark : th === "light" ? t.settings.light : t.settings.system}
               </button>
             ))}
           </div>
