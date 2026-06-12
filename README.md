@@ -1,187 +1,98 @@
-# opencode-free-proxy
+# OpenCode Free Proxy
 
-Free AI models from [OpenCode](https://opencode.ai) exposed as standard OpenAI and Anthropic APIs.
+> **A desktop app** that exposes free AI models from [OpenCode](https://opencode.ai) as standard OpenAI and Anthropic APIs, with a built-in model pool, speed testing, and automatic failover.
 
-One server — works with any tool that speaks OpenAI or Anthropic format: Cursor, Continue, Cline, Claude Code, aider, opencode CLI, raw `curl`, whatever.
+[中文文档](README.zh.md)
 
-## 30-second setup
+---
+
+## ✨ Features
+
+- **🖥️ Desktop App** — Built with Tauri + React, no terminal needed. Double-click to run.
+- **🌐 API Proxy** — OpenAI (`/v1/chat/completions`) and Anthropic (`/v1/messages`) formats.
+- **🔀 Model Pool** — Auto-failover: if one model fails, try the next by priority.
+- **⚡ Speed Test** — One-click batch latency and throughput testing.
+- **🔌 Import to Tools** — One-click export to Claude Code, Codex, or CCSwitch.
+- **🌙 Theme** — Dark, Light, or System-following. English/Chinese UI.
+
+## 🚀 Quick Start
+
+### Download
+
+Download the latest `.dmg` from [Releases](https://github.com/jxhhdx/opencode-free-proxy/releases).
+
+### Build from source
 
 ```bash
-git clone https://github.com/bigdata2211it-web/opencode-free-proxy.git
+git clone https://github.com/jxhhdx/opencode-free-proxy.git
 cd opencode-free-proxy
+
+# Install dependencies
 npm install
-node server.mjs
+
+# Run in development mode
+cargo tauri dev
+
+# Build production .app
+cargo tauri build
 ```
 
-Done. Server is at `http://localhost:6446`. API keys are in `api-keys.json` (auto-generated on first run).
+## 🎯 Usage
 
-## What you get
+Open the app → server starts automatically on `http://localhost:6446`.
 
-| Model | What it is | Reliability |
-|-------|-----------|-------------|
-| `deepseek-v4-flash-free` | DeepSeek V4 Flash | Solid |
-| `big-pickle` | DeepSeek V4 Flash (alias) | Solid |
-| `minimax-m2.5-free` | MiniMax M2.5 | Solid |
-| `nemotron-3-super-free` | NVIDIA Nemotron 3 Super | Hit or miss |
-| `qwen3.6-plus-free` | Qwen 3.6 Plus | Intermittent |
+### Dashboard
 
-All models support streaming, tool calls, and system messages.
+| Section | Description |
+|---------|-------------|
+| **API Keys** | Auto-generated keys, click to copy |
+| **Model Pool** | Enable/disable models, drag to reorder priority |
+| **Speed Test** | Test all models at once, view latency & tokens/sec |
+| **Import Pool** | Export config to Claude Code / Codex / CCSwitch |
+| **Settings** | Language toggle (中文/English), theme (Dark/Light/System) |
 
-## API
+### Available Models
 
-### OpenAI format — `POST /v1/chat/completions`
+| Model | Type | Reliability |
+|-------|------|-------------|
+| `deepseek-v4-flash-free` | OpenCode Free | ✅ Solid |
+| `big-pickle` | OpenCode Free (alias) | ✅ Solid |
+| `minimax-m2.5-free` | OpenCode Free | ⚠️ Intermittent |
+| `nemotron-3-super-free` | OpenCode Free | ⚠️ Hit or miss |
+| `qwen3.6-plus-free` | OpenCode Free | ❌ Ended |
+
+You can also add **custom providers** with your own API URL and key.
+
+## 🔧 API Endpoints
+
+Once the app is running:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/chat/completions` | OpenAI format |
+| `POST` | `/v1/messages` | Anthropic format |
+| `GET` | `/v1/models` | List models |
+| `GET` | `/health` | Health check |
+
+### curl example
 
 ```bash
 curl http://localhost:6446/v1/chat/completions \
   -H "Authorization: Bearer YOUR_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "model": "deepseek-v4-flash-free",
-    "messages": [{"role": "user", "content": "Hello"}],
-    "stream": true
-  }'
+  -d '{"model":"deepseek-v4-flash-free","messages":[{"role":"user","content":"Hello"}]}'
 ```
 
-### Anthropic format — `POST /v1/messages`
+## 🏗️ Tech Stack
 
-```bash
-curl http://localhost:6446/v1/messages \
-  -H "x-api-key: YOUR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "deepseek-v4-flash-free",
-    "system": "You are helpful.",
-    "messages": [{"role": "user", "content": "Hello"}],
-    "max_tokens": 1024,
-    "stream": true
-  }'
-```
+| Layer | Technology |
+|-------|-----------|
+| Desktop | Tauri 2 |
+| Frontend | React 18 + TypeScript |
+| Backend | Rust (axum, reqwest, tokio) |
+| Drag & Drop | @dnd-kit/sortable |
+| Building | Vite |
 
-### Other endpoints
-
-| Method | Path | What |
-|--------|------|------|
-| `GET` | `/v1/models` | List models |
-| `GET` | `/health` | Health + version |
-
-### Auth
-
-Both `Authorization: Bearer KEY` and `x-api-key: KEY` work on all endpoints.
-
-## Use with tools
-
-### opencode CLI
-
-Add to `~/.config/opencode/opencode.json`:
-
-```json
-{
-  "provider": {
-    "free": {
-      "name": "free",
-      "type": "openai",
-      "apiKey": "YOUR_KEY",
-      "baseURL": "http://localhost:6446/v1",
-      "models": {
-        "free/deepseek-v4-flash-free": {
-          "id": "deepseek-v4-flash-free",
-          "name": "free/deepseek-v4-flash-free",
-          "attachment": true,
-          "reasoning": true
-        }
-      }
-    }
-  }
-}
-```
-
-### Cursor / Continue / Cline
-
-- Base URL: `http://YOUR_HOST:6446/v1`
-- API Key: your key from `api-keys.json`
-- Model: `deepseek-v4-flash-free`
-
-### Claude Code (Anthropic format)
-
-- Base URL: `http://YOUR_HOST:6446`
-- API Key: your key from `api-keys.json`
-- Works with `/v1/messages` endpoint
-
-## Deploy on a VPS
-
-```bash
-# On your VPS
-git clone https://github.com/bigdata2211it-web/opencode-free-proxy.git
-cd opencode-free-proxy
-npm install
-node server.mjs          # foreground
-# or
-nohup node server.mjs > proxy.log 2>&1 &   # background
-```
-
-If your VPS doesn't expose port 6446, use an SSH tunnel:
-
-```bash
-ssh -L 6446:127.0.0.1:6446 user@your-vps
-# Now http://localhost:6446 works locally
-```
-
-### systemd service (optional)
-
-```ini
-# /etc/systemd/system/opencode-proxy.service
-[Unit]
-Description=OpenCode Free Proxy
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=/opt/opencode-proxy
-ExecStart=/usr/bin/node server.mjs
-Restart=always
-RestartSec=5
-Environment=PROXY_PORT=6446
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo systemctl enable --now opencode-proxy
-```
-
-## Environment variables
-
-| Variable | Default | What |
-|----------|---------|------|
-| `PROXY_PORT` | `6446` | Server port |
-| `KEYS_FILE` | `./api-keys.json` | API keys file path |
-
-## How it works
-
-```
-Your tool (Cursor, CLI, curl, etc.)
-        │
-        ▼
-  opencode-free-proxy        ← this server, translates formats
-        │
-        ▼  HTTPS
-  opencode.ai/zen/v1/       ← free tier API
-```
-
-The proxy adds `x-opencode-*` authentication headers that the Zen API requires. These were discovered by reverse engineering the opencode binary — without them, even `Authorization: Bearer public` gets rejected with `AuthError`.
-
-### Zen API auth headers (for the curious)
-
-```
-Authorization: Bearer public
-User-Agent: opencode/1.15.0 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.13
-x-opencode-client: cli
-x-opencode-project: global
-x-opencode-request: msg_<unique_id>
-x-opencode-session: ses_<unique_id>
-```
-
-## License
+## 📄 License
 
 MIT
