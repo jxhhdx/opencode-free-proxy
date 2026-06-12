@@ -6,9 +6,7 @@ export const en = {
     starting: "Starting...",
     refresh: "Refresh",
   },
-  keys: {
-    title: "API Keys",
-  },
+  keys: { title: "API Keys" },
   pool: {
     title: "Model Pool",
     add: "+ Add",
@@ -29,12 +27,7 @@ export const en = {
     orderSaved: "Order saved",
     noApiKey: "No API key",
   },
-  import: {
-    claude: "Claude Code",
-    codex: "Codex",
-    ccswitch: "CCSwitch",
-    modelPool: "ModelPool",
-  },
+  import: { claude: "Claude Code", codex: "Codex", ccswitch: "CCSwitch", modelPool: "ModelPool" },
   dialog: {
     addProvider: "Add Provider",
     name: "Name *",
@@ -47,13 +40,10 @@ export const en = {
     add: "Add",
   },
   settings: {
+    title: "Settings",
     lang: "Language",
     zh: "中文",
     en: "English",
-    theme: "主题",
-    dark: "深色",
-    light: "浅色",
-    system: "跟随系统",
     theme: "Theme",
     dark: "Dark",
     light: "Light",
@@ -71,9 +61,7 @@ export const zh: Translations = {
     starting: "正在启动...",
     refresh: "刷新",
   },
-  keys: {
-    title: "API 密钥",
-  },
+  keys: { title: "API 密钥" },
   pool: {
     title: "模型号池",
     add: "+ 添加",
@@ -94,12 +82,7 @@ export const zh: Translations = {
     orderSaved: "排序已保存",
     noApiKey: "没有可用的 API Key",
   },
-  import: {
-    claude: "Claude Code",
-    codex: "Codex",
-    ccswitch: "CCSwitch",
-    modelPool: "ModelPool",
-  },
+  import: { claude: "Claude Code", codex: "Codex", ccswitch: "CCSwitch", modelPool: "ModelPool" },
   dialog: {
     addProvider: "添加提供商",
     name: "名称 *",
@@ -112,6 +95,7 @@ export const zh: Translations = {
     add: "添加",
   },
   settings: {
+    title: "设置",
     lang: "语言",
     zh: "中文",
     en: "English",
@@ -119,9 +103,5 @@ export const zh: Translations = {
     dark: "深色",
     light: "浅色",
     system: "跟随系统",
-    theme: "Theme",
-    dark: "Dark",
-    light: "Light",
-    system: "System",
   },
 };
