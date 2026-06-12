@@ -485,7 +485,7 @@ pub async fn run_speed_test(
     let entry = pool.get_by_name(model);
     let use_custom = entry.and_then(|e| {
         if !e.base_url.is_empty() {
-            Some((e.base_url.clone(), e.api_key.clone(), e.model_name.clone()))
+            Some((e.base_url.clone(), e.api_key.clone(), e.model_name.clone(), e.api_format.clone()))
         } else {
             None
         }
@@ -494,19 +494,35 @@ pub async fn run_speed_test(
 
     let start = Instant::now();
 
-    if let Some((ref base_url, ref api_key, ref model_name)) = use_custom {
+    if let Some((ref base_url, ref api_key, ref model_name, ref api_format)) = use_custom {
         // Custom provider: send to user's API endpoint
         let client = reqwest::Client::new();
-        let url = format!("{}/v1/chat/completions", base_url.trim_end_matches('/'));
-        let body = serde_json::json!({
-            "model": model_name,
-            "messages": test_messages,
-            "stream": false,
-        });
+        let is_anthropic = api_format == "anthropic";
+        let url = if is_anthropic {
+            format!("{}/v1/messages", base_url.trim_end_matches('/'))
+        } else {
+            format!("{}/v1/chat/completions", base_url.trim_end_matches('/'))
+        };
+        let body = if is_anthropic {
+            serde_json::json!({
+                "model": model_name,
+                "messages": [{"role": "user", "content": "Reply with exactly 'OK' and nothing else."}],
+                "max_tokens": 50,
+            })
+        } else {
+            serde_json::json!({
+                "model": model_name,
+                "messages": test_messages,
+                "stream": false,
+            })
+        };
+        let json_body = serde_json::to_string(&body).unwrap_or_default();
+        let auth_val = if is_anthropic { api_key.clone() } else { format!("Bearer {}", api_key) };
+        let auth_header = if is_anthropic { "x-api-key" } else { "Authorization" };
         let resp = client.post(&url)
             .header("Content-Type", "application/json")
-            .header("Authorization", format!("Bearer {}", api_key))
-            .json(&body)
+            .header(auth_header, &auth_val)
+            .body(json_body)
             .send()
             .await;
 
@@ -526,10 +542,18 @@ pub async fn run_speed_test(
                 }
                 match r.json::<serde_json::Value>().await {
                     Ok(data) => {
-                        let total = data.pointer("/usage/total_tokens").and_then(|t| t.as_u64()).unwrap_or(0);
-                        let comp = data.pointer("/usage/completion_tokens").and_then(|t| t.as_u64()).unwrap_or(0);
+                        let (total, comp, preview) = if is_anthropic {
+                            let it = data.get("usage").and_then(|u| u.get("input_tokens")).and_then(|t| t.as_u64()).unwrap_or(0);
+                            let ot = data.get("usage").and_then(|u| u.get("output_tokens")).and_then(|t| t.as_u64()).unwrap_or(0);
+                            let text = data.pointer("/content/0/text").and_then(|c| c.as_str()).unwrap_or("").chars().take(100).collect();
+                            (it + ot, ot, text)
+                        } else {
+                            let total = data.pointer("/usage/total_tokens").and_then(|t| t.as_u64()).unwrap_or(0);
+                            let comp = data.pointer("/usage/completion_tokens").and_then(|t| t.as_u64()).unwrap_or(0);
+                            let text = data.pointer("/choices/0/message/content").and_then(|c| c.as_str()).unwrap_or("").chars().take(100).collect();
+                            (total, comp, text)
+                        };
                         let tps = if elapsed > 0 && comp > 0 { (comp as f64) / (elapsed as f64 / 1000.0) } else { 0.0 };
-                        let preview = data.pointer("/choices/0/message/content").and_then(|c| c.as_str()).unwrap_or("").chars().take(100).collect();
                         SpeedTestResult { model: model.to_string(), success: true, error: None, latency_ms: elapsed, tokens_per_sec: tps, total_tokens: total, response_preview: preview }
                     }
                     Err(e) => SpeedTestResult { model: model.to_string(), success: false, error: Some(format!("Parse error: {}", e)), latency_ms: elapsed, tokens_per_sec: 0.0, total_tokens: 0, response_preview: String::new() }
